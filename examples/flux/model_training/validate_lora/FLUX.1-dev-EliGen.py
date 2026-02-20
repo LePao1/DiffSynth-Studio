@@ -17,7 +17,7 @@ pipe.load_lora(pipe.dit, "models/train/FLUX.1-dev-EliGen_lora/epoch-4.safetensor
 
 entity_prompts = ["A beautiful girl", "sign 'Entity Control'", "shorts", "shirt"]
 global_prompt = "A beautiful girl wearing shirt and shorts in the street,  holding a sign 'Entity Control'"
-masks = [Image.open(f"data/example_image_dataset/eligen/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+masks = [Image.open(f"data/example_image_dataset/eligen/{i}.png").convert("RGB") for i in range(len(entity_prompts))]
 # generate image
 image = pipe(
     prompt=global_prompt,

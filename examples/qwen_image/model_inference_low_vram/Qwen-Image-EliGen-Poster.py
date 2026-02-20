@@ -7,7 +7,7 @@ import random
 
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
-    overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
 
     colors = [
         (165, 238, 173, 80),
@@ -29,7 +29,9 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
     ]
     # Generate random colors for each mask
     if use_random_colors:
-        colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))]
+        colors = [
+            (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))
+        ]
 
     # Font settings
     try:
@@ -40,7 +42,7 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
     # Overlay each mask onto the overlay image
     for mask, mask_prompt, color in zip(masks, mask_prompts, colors):
         # Convert mask to RGBA mode
-        mask_rgba = mask.convert('RGBA')
+        mask_rgba = mask.convert("RGBA")
         mask_data = mask_rgba.getdata()
         new_data = [(color if item[:3] == (255, 255, 255) else (0, 0, 0, 0)) for item in mask_data]
         mask_rgba.putdata(new_data)
@@ -55,7 +57,7 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
         overlay = Image.alpha_composite(overlay, mask_rgba)
 
     # Composite the overlay onto the original image
-    result = Image.alpha_composite(image.convert('RGBA'), overlay)
+    result = Image.alpha_composite(image.convert("RGBA"), overlay)
 
     # Save or display the resulting image
     result.save(output_path)
@@ -67,10 +69,12 @@ def example(pipe, seeds, example_id, global_prompt, entity_prompts, height=784, 
     dataset_snapshot_download(
         dataset_id="DiffSynth-Studio/examples_in_diffsynth",
         local_dir="./",
-        allow_file_pattern=f"data/examples/eligen/poster/example_{example_id}/*.png"
+        allow_file_pattern=f"data/examples/eligen/poster/example_{example_id}/*.png",
     )
     masks = [
-        Image.open(f"./data/examples/eligen/poster/example_{example_id}/{i}.png").convert('RGB').resize((width, height))
+        Image.open(f"./data/examples/eligen/poster/example_{example_id}/{i}.png")
+        .convert("RGB")
+        .resize((width, height))
         for i in range(len(entity_prompts))
     ]
     negative_prompt = "网格化，规则的网格，模糊, 低分辨率, 低质量, 变形, 畸形, 错误的解剖学, 变形的手, 变形的身体, 变形的脸, 变形的头发, 变形的眼睛, 变形的嘴巴"
@@ -106,12 +110,18 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
 )
 snapshot_download(
     "DiffSynth-Studio/Qwen-Image-EliGen-Poster",
@@ -120,6 +130,10 @@ snapshot_download(
 )
 pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen-Poster/model.safetensors", hotload=True)
 global_prompt = "一张以柔粉紫为背景的海报，左侧有大号粉紫色文字“Qwen-Image EliGen-Poster”，粉紫色椭圆框内白色小字：“图像精确分区控制模型”。右侧有一只小兔子在拆礼物，旁边站着一只头顶迷你烟花发射器的小龙（卡通Q版）。背景有一些白云点缀。整体风格卡通可爱，传达节日惊喜的主题。"
-entity_prompts = ["粉紫色文字“Qwen-Image EliGen-Poster”", "粉紫色椭圆框内白色小字：“图像精确分区控制模型”", "一只小兔子在拆礼物，小兔子旁边站着一只头顶迷你烟花发射器的小龙（卡通Q版）"]
+entity_prompts = [
+    "粉紫色文字“Qwen-Image EliGen-Poster”",
+    "粉紫色椭圆框内白色小字：“图像精确分区控制模型”",
+    "一只小兔子在拆礼物，小兔子旁边站着一只头顶迷你烟花发射器的小龙（卡通Q版）",
+]
 seed = [42]
 example(pipe, seed, 1, global_prompt, entity_prompts)

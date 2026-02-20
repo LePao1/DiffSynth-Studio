@@ -2,7 +2,9 @@ from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from modelscope import snapshot_download
 import torch
 
-snapshot_download("DiffSynth-Studio/Qwen-Image-Distill-LoRA", local_dir="models/DiffSynth-Studio/Qwen-Image-Distill-LoRA")
+snapshot_download(
+    "DiffSynth-Studio/Qwen-Image-Distill-LoRA", local_dir="models/DiffSynth-Studio/Qwen-Image-Distill-LoRA"
+)
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
@@ -17,12 +19,18 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
 )
 pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-Distill-LoRA/model.safetensors", hotload=True)
 

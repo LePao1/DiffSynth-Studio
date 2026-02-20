@@ -16,16 +16,26 @@ pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev",
+            origin_file_pattern="text_encoder/model.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config
+        ),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev", origin_file_pattern="model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev", origin_file_pattern="model.safetensors", **vram_config
+        ),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
 )
 lora = ModelConfig(model_id="VoidOc/flux_animal_forest1", origin_file_pattern="20.safetensors")
-pipe.load_lora(pipe.dit, lora) # Use `pipe.clear_lora()` to drop the loaded LoRA.
+pipe.load_lora(pipe.dit, lora)  # Use `pipe.clear_lora()` to drop the loaded LoRA.
 
 # Empty prompt can automatically activate LoRA capabilities.
 image = pipe(prompt="", seed=0, lora_encoder_inputs=lora)
@@ -38,7 +48,10 @@ image.save("image_1_origin.jpg")
 image = pipe(prompt="a car", seed=0, lora_encoder_inputs=lora)
 image.save("image_2.jpg")
 
-image = pipe(prompt="a car", seed=0,)
+image = pipe(
+    prompt="a car",
+    seed=0,
+)
 image.save("image_2_origin.jpg")
 
 # Adjust the activation intensity through the scale parameter.

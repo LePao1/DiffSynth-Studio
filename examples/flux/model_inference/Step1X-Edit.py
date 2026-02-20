@@ -18,15 +18,21 @@ image = Image.fromarray(np.zeros((1248, 832, 3), dtype=np.uint8) + 255)
 image = pipe(
     prompt="draw red flowers in Chinese ink painting style",
     step1x_reference_image=image,
-    width=832, height=1248, cfg_scale=6,
-    seed=1, rand_device='cuda'
+    width=832,
+    height=1248,
+    cfg_scale=6,
+    seed=1,
+    rand_device="cuda",
 )
 image.save("image_1.jpg")
 
 image = pipe(
     prompt="add more flowers in Chinese ink painting style",
     step1x_reference_image=image,
-    width=832, height=1248, cfg_scale=6,
-    seed=2, rand_device='cuda'
+    width=832,
+    height=1248,
+    cfg_scale=6,
+    seed=2,
+    rand_device="cuda",
 )
 image.save("image_2.jpg")

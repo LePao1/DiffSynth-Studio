@@ -17,7 +17,9 @@ pipe.load_lora(pipe.dit, "models/train/Step1X-Edit_lora/epoch-4.safetensors", al
 image = pipe(
     prompt="Make the dog turn its head around.",
     step1x_reference_image=Image.open("data/example_image_dataset/2.jpg").resize((768, 768)),
-    height=768, width=768, cfg_scale=6,
-    seed=0
+    height=768,
+    width=768,
+    cfg_scale=6,
+    seed=0,
 )
 image.save("image_Step1X-Edit_lora.jpg")

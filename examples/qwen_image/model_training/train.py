@@ -3,17 +3,24 @@ from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.diffusion import *
 from diffsynth.core.data.operators import *
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 class QwenImageTrainingModule(DiffusionTrainingModule):
     def __init__(
         self,
-        model_paths=None, model_id_with_origin_paths=None,
-        tokenizer_path=None, processor_path=None,
+        model_paths=None,
+        model_id_with_origin_paths=None,
+        tokenizer_path=None,
+        processor_path=None,
         trainable_models=None,
-        lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
-        preset_lora_path=None, preset_lora_model=None,
+        lora_base_model=None,
+        lora_target_modules="",
+        lora_rank=32,
+        lora_checkpoint=None,
+        preset_lora_path=None,
+        preset_lora_model=None,
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
@@ -25,20 +32,45 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
     ):
         super().__init__()
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
-        tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
-        processor_config = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
-        self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, processor_config=processor_config)
+        model_configs = self.parse_model_configs(
+            model_paths,
+            model_id_with_origin_paths,
+            fp8_models=fp8_models,
+            offload_models=offload_models,
+            device=device,
+        )
+        tokenizer_config = (
+            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/")
+            if tokenizer_path is None
+            else ModelConfig(tokenizer_path)
+        )
+        processor_config = (
+            ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/")
+            if processor_path is None
+            else ModelConfig(processor_path)
+        )
+        self.pipe = QwenImagePipeline.from_pretrained(
+            torch_dtype=torch.bfloat16,
+            device=device,
+            model_configs=model_configs,
+            tokenizer_config=tokenizer_config,
+            processor_config=processor_config,
+        )
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
 
         # Training mode
         self.switch_pipe_to_training_mode(
-            self.pipe, trainable_models,
-            lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
-            preset_lora_path, preset_lora_model,
+            self.pipe,
+            trainable_models,
+            lora_base_model,
+            lora_target_modules,
+            lora_rank,
+            lora_checkpoint,
+            preset_lora_path,
+            preset_lora_model,
             task=task,
         )
-        
+
         # Other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
@@ -49,12 +81,20 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
             "direct_distill:data_process": lambda pipe, *args: args,
-            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
-            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
-            "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
-            "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
+            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(
+                pipe, **inputs_shared, **inputs_posi
+            ),
+            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(
+                pipe, **inputs_shared, **inputs_posi
+            ),
+            "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(
+                pipe, **inputs_shared, **inputs_posi
+            ),
+            "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(
+                pipe, **inputs_shared, **inputs_posi
+            ),
         }
-        
+
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
@@ -71,22 +111,27 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         # Assume you are using this pipeline for inference,
         # please fill in the input parameters.
         if isinstance(data["image"], list):
-            inputs_shared.update({
-                "input_image": data["image"],
-                "height": data["image"][0].size[1],
-                "width": data["image"][0].size[0],
-            })
+            inputs_shared.update(
+                {
+                    "input_image": data["image"],
+                    "height": data["image"][0].size[1],
+                    "width": data["image"][0].size[0],
+                }
+            )
         else:
-            inputs_shared.update({
-                "input_image": data["image"],
-                "height": data["image"].size[1],
-                "width": data["image"].size[0],
-            })
+            inputs_shared.update(
+                {
+                    "input_image": data["image"],
+                    "height": data["image"].size[1],
+                    "width": data["image"].size[0],
+                }
+            )
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
-    
+
     def forward(self, data, inputs=None):
-        if inputs is None: inputs = self.get_pipeline_inputs(data)
+        if inputs is None:
+            inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
@@ -99,9 +144,21 @@ def qwen_image_parser():
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
-    parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used for image editing.")
-    parser.add_argument("--zero_cond_t", default=False, action="store_true", help="A special parameter introduced by Qwen-Image-Edit-2511. Please enable it for this model.")
-    parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    parser.add_argument(
+        "--processor_path",
+        type=str,
+        default=None,
+        help="Path to the processor. If provided, the processor will be used for image editing.",
+    )
+    parser.add_argument(
+        "--zero_cond_t",
+        default=False,
+        action="store_true",
+        help="A special parameter introduced by Qwen-Image-Edit-2511. Please enable it for this model.",
+    )
+    parser.add_argument(
+        "--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU."
+    )
     return parser
 
 
@@ -127,12 +184,28 @@ if __name__ == "__main__":
         ),
         special_operator_map={
             # Qwen-Image-Layered
-            "layer_input_image": ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
-            "image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
-                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
-            ])
-        }
+            "layer_input_image": ToAbsolutePath(args.dataset_base_path)
+            >> LoadImage(convert_RGB=False, convert_RGBA=True)
+            >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+            "image": RouteByType(
+                operator_map=[
+                    (
+                        str,
+                        ToAbsolutePath(args.dataset_base_path)
+                        >> LoadImage()
+                        >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+                    ),
+                    (
+                        list,
+                        SequencialProcess(
+                            ToAbsolutePath(args.dataset_base_path)
+                            >> LoadImage(convert_RGB=False, convert_RGBA=True)
+                            >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)
+                        ),
+                    ),
+                ]
+            ),
+        },
     )
     model = QwenImageTrainingModule(
         model_paths=args.model_paths,

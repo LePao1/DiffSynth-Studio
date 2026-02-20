@@ -20,8 +20,10 @@ pipe.load_lora(pipe.dit, "models/train/krea-realtime-video_lora/epoch-4.safetens
 # Text-to-video
 video = pipe(
     prompt="a cat sitting on a boat",
-    num_inference_steps=6, num_frames=81,
-    seed=0, tiled=True,
+    num_inference_steps=6,
+    num_frames=81,
+    seed=0,
+    tiled=True,
     cfg_scale=1,
     sigma_shift=20,
 )

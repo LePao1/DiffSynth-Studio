@@ -1,6 +1,8 @@
 from diffsynth.pipelines.qwen_image import (
-    QwenImagePipeline, ModelConfig,
-    QwenImageUnit_Image2LoRAEncode, QwenImageUnit_Image2LoRADecode
+    QwenImagePipeline,
+    ModelConfig,
+    QwenImageUnit_Image2LoRAEncode,
+    QwenImageUnit_Image2LoRADecode,
 )
 from diffsynth.utils.lora import merge_lora
 from diffsynth import load_state_dict
@@ -16,18 +18,23 @@ def demo_style():
         torch_dtype=torch.bfloat16,
         device="cuda",
         model_configs=[
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Style.safetensors"),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="SigLIP2-G384/model.safetensors",
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors"
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Style.safetensors"
+            ),
         ],
         processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
     )
 
     # Load images
     snapshot_download(
-        model_id="DiffSynth-Studio/Qwen-Image-i2L",
-        allow_file_pattern="assets/style/1/*",
-        local_dir="data/examples"
+        model_id="DiffSynth-Studio/Qwen-Image-i2L", allow_file_pattern="assets/style/1/*", local_dir="data/examples"
     )
     images = [
         Image.open("data/examples/assets/style/1/0.jpg"),
@@ -51,19 +58,26 @@ def demo_coarse_fine_bias():
         device="cuda",
         model_configs=[
             ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Coarse.safetensors"),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Fine.safetensors"),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="SigLIP2-G384/model.safetensors",
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors"
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Coarse.safetensors"
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Fine.safetensors"
+            ),
         ],
         processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
     )
 
     # Load images
     snapshot_download(
-        model_id="DiffSynth-Studio/Qwen-Image-i2L",
-        allow_file_pattern="assets/lora/3/*",
-        local_dir="data/examples"
+        model_id="DiffSynth-Studio/Qwen-Image-i2L", allow_file_pattern="assets/lora/3/*", local_dir="data/examples"
     )
     images = [
         Image.open("data/examples/assets/lora/3/0.jpg"),
@@ -78,7 +92,9 @@ def demo_coarse_fine_bias():
     with torch.no_grad():
         embs = QwenImageUnit_Image2LoRAEncode().process(pipe, image2lora_images=images)
         lora = QwenImageUnit_Image2LoRADecode().process(pipe, **embs)["lora"]
-        lora_bias = ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Bias.safetensors")
+        lora_bias = ModelConfig(
+            model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Bias.safetensors"
+        )
         lora_bias.download_if_necessary()
         lora_bias = load_state_dict(lora_bias.path, torch_dtype=torch.bfloat16, device="cuda")
         lora = merge_lora([lora, lora_bias])
@@ -90,7 +106,9 @@ def generate_image(lora_path, prompt, seed):
         torch_dtype=torch.bfloat16,
         device="cuda",
         model_configs=[
-            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+            ModelConfig(
+                model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"
+            ),
             ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
             ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
         ],

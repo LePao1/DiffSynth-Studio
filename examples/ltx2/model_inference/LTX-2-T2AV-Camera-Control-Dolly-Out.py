@@ -16,16 +16,27 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="google/gemma-3-12b-it-qat-q4_0-unquantized",
+            origin_file_pattern="model-*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors", **vram_config),
-        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
-    stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
+    stage2_lora_config=ModelConfig(
+        model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"
+    ),
 )
 pipe.load_lora(
     pipe.dit,
-    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out", origin_file_pattern="ltx-2-19b-lora-camera-control-dolly-out.safetensors"),
+    ModelConfig(
+        model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out",
+        origin_file_pattern="ltx-2-19b-lora-camera-control-dolly-out.safetensors",
+    ),
 )
 
 prompt = "Dolly-out shot: A joyful young woman smiles warmly and says: 'I enjoy working with Diffsynth-Studio, it's a perfect framework.' As she speaks, the camera slowly dollies out, revealing a bright, modern creative studio filled with plants, whiteboards full of diagrams, and soft natural light from large windows."
@@ -57,7 +68,7 @@ video, audio = pipe(
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path=f'ltx2_dolly_out.mp4',
+    output_path=f"ltx2_dolly_out.mp4",
     fps=24,
     audio_sample_rate=24000,
 )

@@ -8,7 +8,10 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-Layered-Control", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(
+            model_id="DiffSynth-Studio/Qwen-Image-Layered-Control",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
         ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
@@ -19,8 +22,11 @@ pipe.dit.load_state_dict(state_dict)
 prompt = "Text 'HELLO' and 'Have a great day'"
 input_image = Image.open("data/example_image_dataset/layer/image.png").convert("RGBA").resize((864, 480))
 images = pipe(
-    prompt, seed=0,
-    height=480, width=864,
-    layer_input_image=input_image, layer_num=0,
+    prompt,
+    seed=0,
+    height=480,
+    width=864,
+    layer_input_image=input_image,
+    layer_num=0,
 )
 images[0].save("image.png")

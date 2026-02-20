@@ -8,7 +8,9 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
         ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
@@ -16,9 +18,7 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 
 dataset_snapshot_download(
-    "DiffSynth-Studio/example_image_dataset",
-    allow_patterns="layer/image.png",
-    local_dir="data/example_image_dataset"
+    "DiffSynth-Studio/example_image_dataset", allow_patterns="layer/image.png", local_dir="data/example_image_dataset"
 )
 
 # Prompt should be provided to the pipeline. Our pipeline will not generate the prompt.
@@ -27,10 +27,14 @@ prompt = 'A cheerful child with brown hair is waving enthusiastically under a br
 input_image = Image.open("data/example_image_dataset/layer/image.png").convert("RGBA").resize((864, 480))
 images = pipe(
     prompt,
-    seed=1, num_inference_steps=50,
-    height=480, width=864,
-    layer_input_image=input_image, layer_num=3,
+    seed=1,
+    num_inference_steps=50,
+    height=480,
+    width=864,
+    layer_input_image=input_image,
+    layer_num=3,
 )
 for i, image in enumerate(images):
-    if i == 0: continue # The first image is the input image.
+    if i == 0:
+        continue  # The first image is the input image.
     image.save(f"image_{i}.png")

@@ -15,7 +15,7 @@ def launch_training_task(
     num_workers: int = 1,
     save_steps: int = None,
     num_epochs: int = 1,
-    args = None,
+    args=None,
 ):
     if args is not None:
         learning_rate = args.learning_rate
@@ -23,13 +23,13 @@ def launch_training_task(
         num_workers = args.dataset_num_workers
         save_steps = args.save_steps
         num_epochs = args.num_epochs
-    
+
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
     model.to(device=accelerator.device)
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
-    
+
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
@@ -53,15 +53,17 @@ def launch_data_process_task(
     model: DiffusionTrainingModule,
     model_logger: ModelLogger,
     num_workers: int = 8,
-    args = None,
+    args=None,
 ):
     if args is not None:
         num_workers = args.dataset_num_workers
-        
-    dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers)
+
+    dataloader = torch.utils.data.DataLoader(
+        dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers
+    )
     model.to(device=accelerator.device)
     model, dataloader = accelerator.prepare(model, dataloader)
-    
+
     for data_id, data in enumerate(tqdm(dataloader)):
         with accelerator.accumulate(model):
             with torch.no_grad():

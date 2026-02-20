@@ -4,8 +4,9 @@ from diffsynth.utils.controlnet import Annotator
 from modelscope import snapshot_download
 
 
-
-snapshot_download("sd_lora/Annotators", allow_file_pattern="dpt_hybrid-midas-501f0c75.pt", local_dir="models/Annotators")
+snapshot_download(
+    "sd_lora/Annotators", allow_file_pattern="dpt_hybrid-midas-501f0c75.pt", local_dir="models/Annotators"
+)
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -14,14 +15,19 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
-        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors"),
+        ModelConfig(
+            model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha",
+            origin_file_pattern="diffusion_pytorch_model.safetensors",
+        ),
     ],
 )
 
 image_1 = pipe(
     prompt="a beautiful Asian girl, full body, red dress, summer",
-    height=1024, width=1024,
-    seed=6, rand_device="cuda",
+    height=1024,
+    width=1024,
+    seed=6,
+    rand_device="cuda",
 )
 image_1.save("image_1.jpg")
 
@@ -34,7 +40,9 @@ image_2 = pipe(
         ControlNetInput(image=image_canny, scale=0.3, processor_id="canny"),
         ControlNetInput(image=image_depth, scale=0.3, processor_id="depth"),
     ],
-    height=1024, width=1024,
-    seed=7, rand_device="cuda",
+    height=1024,
+    width=1024,
+    seed=7,
+    rand_device="cuda",
 )
 image_2.save("image_2.jpg")

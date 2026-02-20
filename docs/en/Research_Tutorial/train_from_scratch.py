@@ -6,7 +6,13 @@ from einops import rearrange, repeat
 
 from transformers import AutoProcessor, AutoTokenizer
 from diffsynth.core import ModelConfig, gradient_checkpoint_forward, attention_forward, UnifiedDataset, load_model
-from diffsynth.diffusion import FlowMatchScheduler, DiffusionTrainingModule, FlowMatchSFTLoss, ModelLogger, launch_training_task
+from diffsynth.diffusion import (
+    FlowMatchScheduler,
+    DiffusionTrainingModule,
+    FlowMatchSFTLoss,
+    ModelLogger,
+    launch_training_task,
+)
 from diffsynth.diffusion.base_pipeline import BasePipeline, PipelineUnit
 from diffsynth.models.general_modules import TimestepEmbeddings
 from diffsynth.models.z_image_text_encoder import ZImageTextEncoder
@@ -40,9 +46,9 @@ class AAABlock(torch.nn.Module):
         self.to_out = torch.nn.Linear(dim, dim)
         self.norm_mlp = torch.nn.RMSNorm(dim, elementwise_affine=False)
         self.ff = torch.nn.Sequential(
-            torch.nn.Linear(dim, dim*3),
+            torch.nn.Linear(dim, dim * 3),
             torch.nn.SiLU(),
-            torch.nn.Linear(dim*3, dim),
+            torch.nn.Linear(dim * 3, dim),
         )
         self.to_gate = torch.nn.Linear(dim, dim * 2)
         self.num_heads = num_heads
@@ -51,18 +57,23 @@ class AAABlock(torch.nn.Module):
         emb = self.norm_attn(emb + pos_emb)
         q, k, v = self.to_q(emb), self.to_k(emb), self.to_v(emb)
         emb = attention_forward(
-            q, k, v,
-            q_pattern="b s (n d)", k_pattern="b s (n d)", v_pattern="b s (n d)", out_pattern="b s (n d)",
+            q,
+            k,
+            v,
+            q_pattern="b s (n d)",
+            k_pattern="b s (n d)",
+            v_pattern="b s (n d)",
+            out_pattern="b s (n d)",
             dims={"n": self.num_heads},
         )
         emb = self.to_out(emb)
         return emb
-    
+
     def feed_forward(self, emb, pos_emb):
         emb = self.norm_mlp(emb + pos_emb)
         emb = self.ff(emb)
         return emb
-    
+
     def forward(self, emb, pos_emb, t_emb):
         gate_attn, gate_mlp = self.to_gate(t_emb).chunk(2, dim=-1)
         emb = emb + self.attention(emb, pos_emb) * (1 + gate_attn)
@@ -102,7 +113,7 @@ class AAADiT(torch.nn.Module):
                 pos_emb=pos_emb,
                 t_emb=t_emb,
             )
-        emb = emb[:, :latents.shape[-1] * latents.shape[-2]]
+        emb = emb[:, : latents.shape[-1] * latents.shape[-2]]
         emb = self.proj_out(emb)
         emb = rearrange(emb, "B (H W) C -> B C H W", W=latents.shape[-1])
         return emb
@@ -111,8 +122,10 @@ class AAADiT(torch.nn.Module):
 class AAAImagePipeline(BasePipeline):
     def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
         super().__init__(
-            device=device, torch_dtype=torch_dtype,
-            height_division_factor=16, width_division_factor=16,
+            device=device,
+            torch_dtype=torch_dtype,
+            height_division_factor=16,
+            width_division_factor=16,
         )
         self.scheduler = FlowMatchScheduler("FLUX.2")
         self.text_encoder: ZImageTextEncoder = None
@@ -126,7 +139,7 @@ class AAAImagePipeline(BasePipeline):
             AAAUnit_InputImageEmbedder(),
         ]
         self.model_fn = model_fn_aaa
-    
+
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
@@ -138,7 +151,7 @@ class AAAImagePipeline(BasePipeline):
         # Initialize pipeline
         pipe = AAAImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
-        
+
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("z_image_text_encoder")
         pipe.dit = model_pool.fetch_model("aaa_dit")
@@ -146,11 +159,11 @@ class AAAImagePipeline(BasePipeline):
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
             pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
-        
+
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
-    
+
     @torch.no_grad()
     def __call__(
         self,
@@ -170,22 +183,29 @@ class AAAImagePipeline(BasePipeline):
         # Steps
         num_inference_steps: int = 30,
         # Progress bar
-        progress_bar_cmd = tqdm,
+        progress_bar_cmd=tqdm,
     ):
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=height//16*width//16)
+        self.scheduler.set_timesteps(
+            num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=height // 16 * width // 16
+        )
 
         # Parameters
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "input_image": input_image, "denoising_strength": denoising_strength,
-            "height": height, "width": width,
-            "seed": seed, "rand_device": rand_device,
+            "input_image": input_image,
+            "denoising_strength": denoising_strength,
+            "height": height,
+            "width": width,
+            "seed": seed,
+            "rand_device": rand_device,
             "num_inference_steps": num_inference_steps,
         }
         for unit in self.units:
-            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
+                unit, self, inputs_shared, inputs_posi, inputs_nega
+            )
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
@@ -193,14 +213,21 @@ class AAAImagePipeline(BasePipeline):
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
             noise_pred = self.cfg_guided_model_fn(
-                self.model_fn, cfg_scale,
-                inputs_shared, inputs_posi, inputs_nega,
-                **models, timestep=timestep, progress_id=progress_id
+                self.model_fn,
+                cfg_scale,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
+                **models,
+                timestep=timestep,
+                progress_id=progress_id,
             )
-            inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
+            inputs_shared["latents"] = self.step(
+                self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared
+            )
+
         # Decode
-        self.load_models_to_device(['vae'])
+        self.load_models_to_device(["vae"])
         image = self.vae.decode(inputs_shared["latents"])
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
@@ -215,7 +242,7 @@ class AAAUnit_PromptEmbedder(PipelineUnit):
             input_params_posi={"prompt": "prompt"},
             input_params_nega={"prompt": "negative_prompt"},
             output_params=("prompt_embeds",),
-            onload_model_names=("text_encoder",)
+            onload_model_names=("text_encoder",),
         )
         self.hidden_states_layers = (-1,)
 
@@ -227,7 +254,9 @@ class AAAUnit_PromptEmbedder(PipelineUnit):
             add_generation_prompt=True,
             enable_thinking=False,
         )
-        inputs = pipe.tokenizer(text, return_tensors="pt", padding="max_length", truncation=True, max_length=128).to(pipe.device)
+        inputs = pipe.tokenizer(text, return_tensors="pt", padding="max_length", truncation=True, max_length=128).to(
+            pipe.device
+        )
         output = pipe.text_encoder(**inputs, output_hidden_states=True, use_cache=False)
         prompt_embeds = torch.concat([output.hidden_states[k] for k in self.hidden_states_layers], dim=-1)
         return {"prompt_embeds": prompt_embeds}
@@ -241,7 +270,9 @@ class AAAUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: AAAImagePipeline, height, width, seed, rand_device):
-        noise = pipe.generate_noise((1, 128, height//16, width//16), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+        noise = pipe.generate_noise(
+            (1, 128, height // 16, width // 16), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype
+        )
         return {"noise": noise}
 
 
@@ -250,13 +281,13 @@ class AAAUnit_InputImageEmbedder(PipelineUnit):
         super().__init__(
             input_params=("input_image", "noise"),
             output_params=("latents", "input_latents"),
-            onload_model_names=("vae",)
+            onload_model_names=("vae",),
         )
 
     def process(self, pipe: AAAImagePipeline, input_image, noise):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
-        pipe.load_models_to_device(['vae'])
+        pipe.load_models_to_device(["vae"])
         image = pipe.preprocess_image(input_image)
         input_latents = pipe.vae.encode(image)
         if pipe.scheduler.training:
@@ -293,7 +324,10 @@ class AAATrainingModule(DiffusionTrainingModule):
             device=device,
             model_configs=[
                 ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="model.safetensors"),
-                ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+                ModelConfig(
+                    model_id="black-forest-labs/FLUX.2-klein-4B",
+                    origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
+                ),
             ],
             tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
         )
@@ -313,7 +347,9 @@ class AAATrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing_offload": False,
         }
         for unit in self.pipe.units:
-            inputs_shared, inputs_posi, inputs_nega = self.pipe.unit_runner(unit, self.pipe, inputs_shared, inputs_posi, inputs_nega)
+            inputs_shared, inputs_posi, inputs_nega = self.pipe.unit_runner(
+                unit, self.pipe, inputs_shared, inputs_posi, inputs_nega
+            )
         loss = FlowMatchSFTLoss(self.pipe, **inputs_shared, **inputs_posi)
         return loss
 
@@ -325,7 +361,7 @@ if __name__ == "__main__":
         metadata_path="data/metadata_merged.csv",
         max_data_items=10000000,
         data_file_keys=("image",),
-        main_data_operator=UnifiedDataset.default_image_operator(base_path="data/images", height=256, width=256)
+        main_data_operator=UnifiedDataset.default_image_operator(base_path="data/images", height=256, width=256),
     )
     model = AAATrainingModule(device=accelerator.device)
     model_logger = ModelLogger(
@@ -333,7 +369,10 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt="pipe.dit.",
     )
     launch_training_task(
-        accelerator, dataset, model, model_logger,
+        accelerator,
+        dataset,
+        model,
+        model_logger,
         learning_rate=2e-4,
         num_workers=4,
         save_steps=50000,

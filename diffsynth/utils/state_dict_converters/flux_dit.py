@@ -6,7 +6,7 @@ def FluxDiTStateDictConverter(state_dict):
     if is_nexus_gen:
         dit_state_dict = {}
         for key in state_dict:
-            if key.startswith('pipe.dit.'):
+            if key.startswith("pipe.dit."):
                 param = state_dict[key]
                 new_key = key.replace("pipe.dit.", "")
                 if new_key.startswith("final_norm_out.linear."):
@@ -61,7 +61,6 @@ def FluxDiTStateDictConverter(state_dict):
         "txt_mlp.2.weight": "ff_b.2.weight",
         "txt_mod.lin.bias": "norm1_b.linear.bias",
         "txt_mod.lin.weight": "norm1_b.linear.weight",
-
         "linear1.bias": "to_qkv_mlp.bias",
         "linear1.weight": "to_qkv_mlp.weight",
         "linear2.bias": "proj_out.bias",
@@ -75,7 +74,7 @@ def FluxDiTStateDictConverter(state_dict):
     for name in state_dict:
         original_name = name
         if name.startswith("model.diffusion_model."):
-            name = name[len("model.diffusion_model."):]
+            name = name[len("model.diffusion_model.") :]
         names = name.split(".")
         if name in rename_dict:
             rename = rename_dict[name]
@@ -141,7 +140,7 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):
         param = state_dict[name]
         if name.endswith(".weight") or name.endswith(".bias"):
             suffix = ".weight" if name.endswith(".weight") else ".bias"
-            prefix = name[:-len(suffix)]
+            prefix = name[: -len(suffix)]
             if prefix in global_rename_dict:
                 if global_rename_dict[prefix] == "final_norm_out.linear":
                     param = torch.concat([param[3072:], param[:3072]], dim=0)
@@ -168,28 +167,34 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):
         if "single_blocks." in name and ".a_to_q." in name:
             mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."), None)
             if mlp is None:
-                mlp = torch.zeros(4 * state_dict_[name].shape[0],
-                                    *state_dict_[name].shape[1:],
-                                    dtype=state_dict_[name].dtype)
+                mlp = torch.zeros(
+                    4 * state_dict_[name].shape[0], *state_dict_[name].shape[1:], dtype=state_dict_[name].dtype
+                )
             else:
                 state_dict_.pop(name.replace(".a_to_q.", ".proj_in_besides_attn."))
-            param = torch.concat([
-                state_dict_.pop(name),
-                state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
-                state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
-                mlp,
-            ], dim=0)
+            param = torch.concat(
+                [
+                    state_dict_.pop(name),
+                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
+                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
+                    mlp,
+                ],
+                dim=0,
+            )
             name_ = name.replace(".a_to_q.", ".to_qkv_mlp.")
             state_dict_[name_] = param
     for name in list(state_dict_.keys()):
         for component in ["a", "b"]:
             if f".{component}_to_q." in name:
                 name_ = name.replace(f".{component}_to_q.", f".{component}_to_qkv.")
-                param = torch.concat([
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
-                ], dim=0)
+                param = torch.concat(
+                    [
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
+                    ],
+                    dim=0,
+                )
                 state_dict_[name_] = param
                 state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_q."))
                 state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_k."))
