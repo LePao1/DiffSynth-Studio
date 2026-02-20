@@ -20,7 +20,10 @@ image = pipe(prompt=prompt, seed=0)
 image.save("flux.jpg")
 
 image = pipe(
-    prompt=prompt, negative_prompt=negative_prompt,
-    seed=0, cfg_scale=2, num_inference_steps=50,
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    seed=0,
+    cfg_scale=2,
+    num_inference_steps=50,
 )
 image.save("flux_cfg.jpg")

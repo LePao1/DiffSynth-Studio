@@ -21,8 +21,13 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
-        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin"),
-        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors"),
+        ModelConfig(
+            model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin"
+        ),
+        ModelConfig(
+            model_id="ByteDance/InfiniteYou",
+            origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors",
+        ),
     ],
 )
 
@@ -38,24 +43,32 @@ controlnet_inputs = [ControlNetInput(image=controlnet_image, scale=1.0, processo
 
 prompt = "A man, portrait, cinematic"
 id_image = "data/examples/infiniteyou/man.jpg"
-id_image = Image.open(id_image).convert('RGB')
+id_image = Image.open(id_image).convert("RGB")
 image = pipe(
-    prompt=prompt, seed=1,
-    infinityou_id_image=id_image, infinityou_guidance=1.0,
+    prompt=prompt,
+    seed=1,
+    infinityou_id_image=id_image,
+    infinityou_guidance=1.0,
     controlnet_inputs=controlnet_inputs,
-    num_inference_steps=50, embedded_guidance=3.5,
-    height=height, width=width,
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    height=height,
+    width=width,
 )
 image.save("man.jpg")
 
 prompt = "A woman, portrait, cinematic"
 id_image = "data/examples/infiniteyou/woman.jpg"
-id_image = Image.open(id_image).convert('RGB')
+id_image = Image.open(id_image).convert("RGB")
 image = pipe(
-    prompt=prompt, seed=1,
-    infinityou_id_image=id_image, infinityou_guidance=1.0,
+    prompt=prompt,
+    seed=1,
+    infinityou_id_image=id_image,
+    infinityou_guidance=1.0,
     controlnet_inputs=controlnet_inputs,
-    num_inference_steps=50, embedded_guidance=3.5,
-    height=height, width=width,
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    height=height,
+    width=width,
 )
 image.save("woman.jpg")

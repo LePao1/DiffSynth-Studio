@@ -20,9 +20,6 @@ state_dict = load_state_dict("models/train/FLUX.1-dev-IP-Adapter_full/epoch-0.sa
 pipe.ipadapter.load_state_dict(state_dict)
 
 image = pipe(
-    prompt="a dog",
-    ipadapter_images=Image.open("data/example_image_dataset/1.jpg"),
-    height=768, width=768,
-    seed=0
+    prompt="a dog", ipadapter_images=Image.open("data/example_image_dataset/1.jpg"), height=768, width=768, seed=0
 )
 image.save("image_FLUX.1-dev-IP-Adapter_full.jpg")

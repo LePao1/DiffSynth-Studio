@@ -16,16 +16,27 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="google/gemma-3-12b-it-qat-q4_0-unquantized",
+            origin_file_pattern="model-*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors", **vram_config),
-        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
-    stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
+    stage2_lora_config=ModelConfig(
+        model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"
+    ),
 )
 pipe.load_lora(
     pipe.dit,
-    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Static", origin_file_pattern="ltx-2-19b-lora-camera-control-static.safetensors"),
+    ModelConfig(
+        model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Static",
+        origin_file_pattern="ltx-2-19b-lora-camera-control-static.safetensors",
+    ),
 )
 prompt = "A beautiful sunset over the ocean."
 negative_prompt = (
@@ -55,7 +66,7 @@ video, audio = pipe(
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path='ltx2_camera_static.mp4',
+    output_path="ltx2_camera_static.mp4",
     fps=24,
     audio_sample_rate=24000,
 )

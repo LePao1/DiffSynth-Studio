@@ -51,7 +51,7 @@ def FluxControlNetStateDictConverter(state_dict):
         param = state_dict[name]
         if name.endswith(".weight") or name.endswith(".bias"):
             suffix = ".weight" if name.endswith(".weight") else ".bias"
-            prefix = name[:-len(suffix)]
+            prefix = name[: -len(suffix)]
             if prefix in global_rename_dict:
                 state_dict_[global_rename_dict[prefix] + suffix] = param
             elif prefix.startswith("transformer_blocks."):
@@ -75,12 +75,15 @@ def FluxControlNetStateDictConverter(state_dict):
     for name in list(state_dict_.keys()):
         if ".proj_in_besides_attn." in name:
             name_ = name.replace(".proj_in_besides_attn.", ".to_qkv_mlp.")
-            param = torch.concat([
-                state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_q.")],
-                state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_k.")],
-                state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_v.")],
-                state_dict_[name],
-            ], dim=0)
+            param = torch.concat(
+                [
+                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_q.")],
+                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_k.")],
+                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_v.")],
+                    state_dict_[name],
+                ],
+                dim=0,
+            )
             state_dict_[name_] = param
             state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_q."))
             state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_k."))
@@ -90,14 +93,17 @@ def FluxControlNetStateDictConverter(state_dict):
         for component in ["a", "b"]:
             if f".{component}_to_q." in name:
                 name_ = name.replace(f".{component}_to_q.", f".{component}_to_qkv.")
-                param = torch.concat([
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
-                    state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
-                ], dim=0)
+                param = torch.concat(
+                    [
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
+                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
+                    ],
+                    dim=0,
+                )
                 state_dict_[name_] = param
                 state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_q."))
                 state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_k."))
                 state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_v."))
-    
+
     return state_dict_

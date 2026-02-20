@@ -19,7 +19,9 @@ pipe.dit.load_state_dict(state_dict)
 image = pipe(
     prompt="Make the dog turn its head around.",
     step1x_reference_image=Image.open("data/example_image_dataset/2.jpg").resize((768, 768)),
-    height=768, width=768, cfg_scale=6,
-    seed=0
+    height=768,
+    width=768,
+    cfg_scale=6,
+    seed=0,
 )
 image.save("image_Step1X-Edit_full.jpg")

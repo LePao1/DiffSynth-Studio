@@ -17,18 +17,24 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image-Edit-2511", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image-Edit-2511",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config
+        ),
     ],
     processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
 )
 
 lora = ModelConfig(
     model_id="lightx2v/Qwen-Image-Edit-2511-Lightning",
-    origin_file_pattern="Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"
+    origin_file_pattern="Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
 )
-pipe.load_lora(pipe.dit, lora, alpha=8/64)
+pipe.load_lora(pipe.dit, lora, alpha=8 / 64)
 pipe.scheduler = FlowMatchScheduler("Qwen-Image-Lightning")
 
 
@@ -51,7 +57,7 @@ image = pipe(
     height=1152,
     width=896,
     edit_image_auto_resize=True,
-    zero_cond_t=True, # This is a special parameter introduced by Qwen-Image-Edit-2511
+    zero_cond_t=True,  # This is a special parameter introduced by Qwen-Image-Edit-2511
     cfg_scale=1.0,
 )
 image.save("image.jpg")

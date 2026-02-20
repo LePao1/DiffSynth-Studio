@@ -7,7 +7,10 @@ pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image-Edit-2511", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(
+            model_id="Qwen/Qwen-Image-Edit-2511",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+        ),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
@@ -33,7 +36,7 @@ image = pipe(
     height=1152,
     width=896,
     edit_image_auto_resize=True,
-    zero_cond_t=True, # This is a special parameter introduced by Qwen-Image-Edit-2511
+    zero_cond_t=True,  # This is a special parameter introduced by Qwen-Image-Edit-2511
 )
 image.save("image.jpg")
 

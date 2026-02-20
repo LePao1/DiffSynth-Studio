@@ -18,8 +18,9 @@ pipe = FluxImagePipeline.from_pretrained(
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl, long hair, red t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
-    seed=0
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    seed=0,
 )
 image.save("image_1.jpg")
 
@@ -32,9 +33,11 @@ inpaint_image = image
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl with sunglasses, long hair, red t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
-    flex_inpaint_image=inpaint_image, flex_inpaint_mask=mask,
-    seed=4
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    flex_inpaint_image=inpaint_image,
+    flex_inpaint_mask=mask,
+    seed=4,
 )
 image.save("image_2.jpg")
 
@@ -43,8 +46,9 @@ control_image.save("image_control.jpg")
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl with sunglasses, long hair, yellow t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
+    num_inference_steps=50,
+    embedded_guidance=3.5,
     flex_control_image=control_image,
-    seed=4
+    seed=4,
 )
 image.save("image_3.jpg")

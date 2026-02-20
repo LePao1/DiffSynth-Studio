@@ -9,17 +9,23 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ByteDance/Video-As-Prompt-Wan2.1-14B", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(
+            model_id="ByteDance/Video-As-Prompt-Wan2.1-14B",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+        ),
         ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
         ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="Wan2.1_VAE.pth"),
-        ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
+        ModelConfig(
+            model_id="Wan-AI/Wan2.1-I2V-14B-720P",
+            origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+        ),
     ],
 )
 state_dict = load_state_dict("models/train/Video-As-Prompt-Wan2.1-14B_full/epoch-1.safetensors")
 pipe.vap.load_state_dict(state_dict)
 
-ref_video_path = 'data/example_video_dataset/wanvap/vap_ref.mp4'
-target_image_path = 'data/example_video_dataset/wanvap/input_image.jpg'
+ref_video_path = "data/example_video_dataset/wanvap/vap_ref.mp4"
+target_image_path = "data/example_video_dataset/wanvap/input_image.jpg"
 
 image = Image.open(target_image_path).convert("RGB")
 ref_video = VideoData(ref_video_path, height=480, width=832)
@@ -33,8 +39,10 @@ video = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
     input_image=image,
-    seed=42, tiled=True,
-    height=480, width=832,
+    seed=42,
+    tiled=True,
+    height=480,
+    width=832,
     num_frames=49,
     vap_video=ref_frames,
     vap_prompt=vap_prompt,

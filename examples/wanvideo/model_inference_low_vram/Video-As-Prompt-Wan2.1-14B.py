@@ -23,22 +23,36 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ByteDance/Video-As-Prompt-Wan2.1-14B", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
+        ModelConfig(
+            model_id="ByteDance/Video-As-Prompt-Wan2.1-14B",
+            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", **vram_config
+        ),
         ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="Wan2.1_VAE.pth", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-720P", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
+        ModelConfig(
+            model_id="Wan-AI/Wan2.1-I2V-14B-720P",
+            origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+            **vram_config,
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 2,
 )
 
-dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="wanvap/*", local_dir="data/example_video_dataset")
-ref_video_path = 'data/example_video_dataset/wanvap/vap_ref.mp4'
-target_image_path = 'data/example_video_dataset/wanvap/input_image.jpg'
+dataset_snapshot_download(
+    "DiffSynth-Studio/example_video_dataset", allow_file_pattern="wanvap/*", local_dir="data/example_video_dataset"
+)
+ref_video_path = "data/example_video_dataset/wanvap/vap_ref.mp4"
+target_image_path = "data/example_video_dataset/wanvap/input_image.jpg"
+
 
 def select_frames(video_frames, num):
     idx = torch.linspace(0, len(video_frames) - 1, num).long().tolist()
     return [video_frames[i] for i in idx]
+
 
 image = Image.open(target_image_path).convert("RGB")
 ref_video = VideoData(ref_video_path, height=480, width=832)
@@ -52,8 +66,10 @@ video = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
     input_image=image,
-    seed=42, tiled=True,
-    height=480, width=832,
+    seed=42,
+    tiled=True,
+    height=480,
+    width=832,
     num_frames=49,
     vap_video=ref_frames,
     vap_prompt=vap_prompt,

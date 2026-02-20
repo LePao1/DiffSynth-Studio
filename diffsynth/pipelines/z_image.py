@@ -25,11 +25,12 @@ from ..models.z_image_image2lora import ZImageImage2LoRAModel
 
 
 class ZImagePipeline(BasePipeline):
-
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
-            device=device, torch_dtype=torch_dtype,
-            height_division_factor=16, width_division_factor=16,
+            device=device,
+            torch_dtype=torch_dtype,
+            height_division_factor=16,
+            width_division_factor=16,
         )
         self.scheduler = FlowMatchScheduler("Z-Image")
         self.text_encoder: ZImageTextEncoder = None
@@ -54,21 +55,22 @@ class ZImagePipeline(BasePipeline):
             ZImageUnit_PAIControlNet(),
         ]
         self.model_fn = model_fn_z_image
-    
-    
+
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
+        tokenizer_config: ModelConfig = ModelConfig(
+            model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"
+        ),
         vram_limit: float = None,
         enable_npu_patch: bool = True,
     ):
         # Initialize pipeline
         pipe = ZImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
-        
+
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("z_image_text_encoder")
         pipe.dit = model_pool.fetch_model("z_image_dit")
@@ -82,14 +84,13 @@ class ZImagePipeline(BasePipeline):
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
             pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
-        
+
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         # NPU patch
         apply_npu_patch(enable_npu_patch)
         return pipe
-    
-    
+
     @torch.no_grad()
     def __call__(
         self,
@@ -118,11 +119,11 @@ class ZImagePipeline(BasePipeline):
         image2lora_images: List[Image.Image] = None,
         positive_only_lora: Dict[str, torch.Tensor] = None,
         # Progress bar
-        progress_bar_cmd = tqdm,
+        progress_bar_cmd=tqdm,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
-        
+
         # Parameters
         inputs_posi = {
             "prompt": prompt,
@@ -132,16 +133,23 @@ class ZImagePipeline(BasePipeline):
         }
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "input_image": input_image, "denoising_strength": denoising_strength,
-            "height": height, "width": width,
-            "seed": seed, "rand_device": rand_device,
+            "input_image": input_image,
+            "denoising_strength": denoising_strength,
+            "height": height,
+            "width": width,
+            "seed": seed,
+            "rand_device": rand_device,
             "num_inference_steps": num_inference_steps,
-            "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize,
+            "edit_image": edit_image,
+            "edit_image_auto_resize": edit_image_auto_resize,
             "controlnet_inputs": controlnet_inputs,
-            "image2lora_images": image2lora_images, "positive_only_lora": positive_only_lora,
+            "image2lora_images": image2lora_images,
+            "positive_only_lora": positive_only_lora,
         }
         for unit in self.units:
-            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
+                unit, self, inputs_shared, inputs_posi, inputs_nega
+            )
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
@@ -149,14 +157,21 @@ class ZImagePipeline(BasePipeline):
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
             noise_pred = self.cfg_guided_model_fn(
-                self.model_fn, cfg_scale,
-                inputs_shared, inputs_posi, inputs_nega,
-                **models, timestep=timestep, progress_id=progress_id
+                self.model_fn,
+                cfg_scale,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
+                **models,
+                timestep=timestep,
+                progress_id=progress_id,
             )
-            inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
+            inputs_shared["latents"] = self.step(
+                self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared
+            )
+
         # Decode
-        self.load_models_to_device(['vae_decoder'])
+        self.load_models_to_device(["vae_decoder"])
         image = self.vae_decoder(inputs_shared["latents"])
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
@@ -184,7 +199,7 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
             input_params_posi={"prompt": "prompt"},
             input_params_nega={"prompt": "negative_prompt"},
             output_params=("prompt_embeds",),
-            onload_model_names=("text_encoder",)
+            onload_model_names=("text_encoder",),
         )
 
     def encode_prompt(
@@ -232,7 +247,7 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
             embeddings_list.append(prompt_embeds[i][prompt_masks[i]])
 
         return embeddings_list
-    
+
     def encode_prompt_omni(
         self,
         pipe,
@@ -318,7 +333,9 @@ class ZImageUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: ZImagePipeline, height, width, seed, rand_device):
-        noise = pipe.generate_noise((1, 16, height//8, width//8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+        noise = pipe.generate_noise(
+            (1, 16, height // 8, width // 8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype
+        )
         return {"noise": noise}
 
 
@@ -327,13 +344,13 @@ class ZImageUnit_InputImageEmbedder(PipelineUnit):
         super().__init__(
             input_params=("input_image", "noise"),
             output_params=("latents", "input_latents"),
-            onload_model_names=("vae_encoder",)
+            onload_model_names=("vae_encoder",),
         )
 
     def process(self, pipe: ZImagePipeline, input_image, noise):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
-        pipe.load_models_to_device(['vae'])
+        pipe.load_models_to_device(["vae"])
         image = pipe.preprocess_image(input_image)
         input_latents = pipe.vae_encoder(image)
         if pipe.scheduler.training:
@@ -355,7 +372,7 @@ class ZImageUnit_EditImageAutoResize(PipelineUnit):
             return {}
         if edit_image_auto_resize is None or not edit_image_auto_resize:
             return {}
-        operator = ImageCropAndResize(max_pixels=1024*1024, height_division_factor=16, width_division_factor=16)
+        operator = ImageCropAndResize(max_pixels=1024 * 1024, height_division_factor=16, width_division_factor=16)
         if not isinstance(edit_image, list):
             edit_image = [edit_image]
         edit_image = [operator(i) for i in edit_image]
@@ -365,9 +382,7 @@ class ZImageUnit_EditImageAutoResize(PipelineUnit):
 class ZImageUnit_EditImageEmbedderSiglip(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("edit_image",),
-            output_params=("image_embeds",),
-            onload_model_names=("image_encoder",)
+            input_params=("edit_image",), output_params=("image_embeds",), onload_model_names=("image_encoder",)
         )
 
     def process(self, pipe: ZImagePipeline, edit_image):
@@ -385,9 +400,7 @@ class ZImageUnit_EditImageEmbedderSiglip(PipelineUnit):
 class ZImageUnit_EditImageEmbedderVAE(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("edit_image",),
-            output_params=("image_latents",),
-            onload_model_names=("vae_encoder",)
+            input_params=("edit_image",), output_params=("image_latents",), onload_model_names=("vae_encoder",)
         )
 
     def process(self, pipe: ZImagePipeline, edit_image):
@@ -408,7 +421,7 @@ class ZImageUnit_PAIControlNet(PipelineUnit):
         super().__init__(
             input_params=("controlnet_inputs", "height", "width"),
             output_params=("control_context", "control_scale"),
-            onload_model_names=("vae_encoder",)
+            onload_model_names=("vae_encoder",),
         )
 
     def process(self, pipe: ZImagePipeline, controlnet_inputs: List[ControlNetInput], height, width):
@@ -424,15 +437,19 @@ class ZImageUnit_PAIControlNet(PipelineUnit):
             control_image = pipe.preprocess_image(control_image)
             control_latents = pipe.vae_encoder(control_image)
         else:
-            control_latents = torch.ones((1, 16, height // 8, width // 8), dtype=pipe.torch_dtype, device=pipe.device) * -1
-        
+            control_latents = (
+                torch.ones((1, 16, height // 8, width // 8), dtype=pipe.torch_dtype, device=pipe.device) * -1
+            )
+
         inpaint_mask = controlnet_input.inpaint_mask
         if inpaint_mask is not None:
             inpaint_mask = pipe.preprocess_image(inpaint_mask, min_value=0, max_value=1)
             inpaint_image = controlnet_input.inpaint_image
             inpaint_image = pipe.preprocess_image(inpaint_image)
             inpaint_image = inpaint_image * (inpaint_mask < 0.5)
-            inpaint_mask = torch.nn.functional.interpolate(1 - inpaint_mask, (height // 8, width // 8), mode='nearest')[:, :1]
+            inpaint_mask = torch.nn.functional.interpolate(
+                1 - inpaint_mask, (height // 8, width // 8), mode="nearest"
+            )[:, :1]
         else:
             inpaint_mask = torch.zeros((1, 1, height // 8, width // 8), dtype=pipe.torch_dtype, device=pipe.device)
             inpaint_image = torch.zeros((1, 3, height, width), dtype=pipe.torch_dtype, device=pipe.device)
@@ -503,11 +520,15 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
         super().__init__(
             input_params=("image2lora_images",),
             output_params=("image2lora_x",),
-            onload_model_names=("siglip2_image_encoder", "dinov3_image_encoder",),
+            onload_model_names=(
+                "siglip2_image_encoder",
+                "dinov3_image_encoder",
+            ),
         )
         from ..core.data.operators import ImageCropAndResize
+
         self.processor_highres = ImageCropAndResize(height=1024, width=1024)
-    
+
     def encode_images_using_siglip2(self, pipe: ZImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["siglip2_image_encoder"])
         embs = []
@@ -516,7 +537,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
         return embs
-    
+
     def encode_images_using_dinov3(self, pipe: ZImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
         embs = []
@@ -550,7 +571,7 @@ class ZImageUnit_Image2LoRADecode(PipelineUnit):
             output_params=("lora",),
             onload_model_names=("image2lora_style",),
         )
-    
+
     def process(self, pipe: ZImagePipeline, image2lora_x):
         if image2lora_x is None:
             return {}
@@ -605,10 +626,18 @@ def model_fn_z_image_turbo(
     if control_context is not None:
         kwargs = dict(attn_mask=None, freqs_cis=x_freqs_cis, adaln_input=t_noisy)
         refiner_hints, control_context, control_context_item_seqlens = controlnet.forward_refiner(
-            dit, x, [cap_feats], control_context, kwargs, t=t_noisy, patch_size=2, f_patch_size=1,
-            use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            dit,
+            x,
+            [cap_feats],
+            control_context,
+            kwargs,
+            t=t_noisy,
+            patch_size=2,
+            f_patch_size=1,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
-    
+
     for layer_id, layer in enumerate(dit.noise_refiner):
         x = gradient_checkpoint_forward(
             layer,
@@ -628,7 +657,7 @@ def model_fn_z_image_turbo(
     cap_freqs_cis = dit.rope_embedder(torch.cat(patch_metadata.get("cap_pos_ids"), dim=0))
     cap_feats = rearrange(cap_feats, "L C -> 1 L C")
     cap_freqs_cis = rearrange(cap_freqs_cis, "L C -> 1 L C")
-    
+
     for layer in dit.context_refiner:
         cap_feats = gradient_checkpoint_forward(
             layer,
@@ -646,8 +675,13 @@ def model_fn_z_image_turbo(
     if control_context is not None:
         kwargs = dict(attn_mask=None, freqs_cis=unified_freqs_cis, adaln_input=t_noisy)
         hints = controlnet.forward_layers(
-            unified, cap_feats, control_context, control_context_item_seqlens, kwargs,
-            use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            unified,
+            cap_feats,
+            control_context,
+            control_context_item_seqlens,
+            kwargs,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
 
     for layer_id, layer in enumerate(dit.layers):
@@ -663,7 +697,7 @@ def model_fn_z_image_turbo(
         if control_context is not None:
             if layer_id in controlnet.control_layers_mapping:
                 unified = unified + hints[controlnet.control_layers_mapping[layer_id]] * control_scale
-    
+
     # Output
     unified = dit.all_final_layer["2-1"](unified, t_noisy)
     x = dit.unpatchify([unified[0]], patch_metadata.get("x_size"))[0]
@@ -672,17 +706,20 @@ def model_fn_z_image_turbo(
     return x
 
 
-def apply_npu_patch(enable_npu_patch: bool=True):
+def apply_npu_patch(enable_npu_patch: bool = True):
     if IS_NPU_AVAILABLE and enable_npu_patch:
         from ..models.general_modules import RMSNorm
         from transformers.models.qwen3.modeling_qwen3 import Qwen3RMSNorm
         from ..models.z_image_dit import Attention
         from ..core.npu_patch.npu_fused_operator import (
-            rms_norm_forward_npu, 
+            rms_norm_forward_npu,
             rms_norm_forward_transformers_npu,
-            rotary_emb_Zimage_npu
+            rotary_emb_Zimage_npu,
         )
-        warnings.warn("Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature.")
+
+        warnings.warn(
+            "Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature."
+        )
         RMSNorm.forward = rms_norm_forward_npu
         Qwen3RMSNorm.forward = rms_norm_forward_transformers_npu
         Attention.apply_rotary_emb = rotary_emb_Zimage_npu

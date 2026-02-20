@@ -20,8 +20,6 @@ image = pipe(prompt=prompt, seed=0, embedded_guidance=4.5)
 image.save("flux_krea.jpg")
 
 image = pipe(
-    prompt=prompt, negative_prompt=negative_prompt,
-    seed=0, cfg_scale=2, num_inference_steps=50,
-    embedded_guidance=4.5
+    prompt=prompt, negative_prompt=negative_prompt, seed=0, cfg_scale=2, num_inference_steps=50, embedded_guidance=4.5
 )
 image.save("flux_krea_cfg.jpg")

@@ -1,6 +1,8 @@
 from diffsynth.pipelines.qwen_image import (
-    QwenImagePipeline, ModelConfig,
-    QwenImageUnit_Image2LoRAEncode, QwenImageUnit_Image2LoRADecode
+    QwenImagePipeline,
+    ModelConfig,
+    QwenImageUnit_Image2LoRAEncode,
+    QwenImageUnit_Image2LoRADecode,
 )
 from diffsynth.utils.lora import merge_lora
 from diffsynth import load_state_dict
@@ -31,25 +33,36 @@ vram_config_disk_offload = {
     "computation_device": "cuda",
 }
 
+
 def demo_style():
     # Load models
     pipe = QwenImagePipeline.from_pretrained(
         torch_dtype=torch.bfloat16,
         device="cuda",
         model_configs=[
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Style.safetensors", **vram_config_disk_offload),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="SigLIP2-G384/model.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="DINOv3-7B/model.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L",
+                origin_file_pattern="Qwen-Image-i2L-Style.safetensors",
+                **vram_config_disk_offload,
+            ),
         ],
         processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
-        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
     )
 
     # Load images
     snapshot_download(
-        model_id="DiffSynth-Studio/Qwen-Image-i2L",
-        allow_file_pattern="assets/style/1/*",
-        local_dir="data/examples"
+        model_id="DiffSynth-Studio/Qwen-Image-i2L", allow_file_pattern="assets/style/1/*", local_dir="data/examples"
     )
     images = [
         Image.open("data/examples/assets/style/1/0.jpg"),
@@ -72,21 +85,39 @@ def demo_coarse_fine_bias():
         torch_dtype=torch.bfloat16,
         device="cuda",
         model_configs=[
-            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Coarse.safetensors", **vram_config_disk_offload),
-            ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Fine.safetensors", **vram_config_disk_offload),
+            ModelConfig(
+                model_id="Qwen/Qwen-Image",
+                origin_file_pattern="text_encoder/model*.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="SigLIP2-G384/model.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/General-Image-Encoders",
+                origin_file_pattern="DINOv3-7B/model.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L",
+                origin_file_pattern="Qwen-Image-i2L-Coarse.safetensors",
+                **vram_config_disk_offload,
+            ),
+            ModelConfig(
+                model_id="DiffSynth-Studio/Qwen-Image-i2L",
+                origin_file_pattern="Qwen-Image-i2L-Fine.safetensors",
+                **vram_config_disk_offload,
+            ),
         ],
         processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
-        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
     )
 
     # Load images
     snapshot_download(
-        model_id="DiffSynth-Studio/Qwen-Image-i2L",
-        allow_file_pattern="assets/lora/3/*",
-        local_dir="data/examples"
+        model_id="DiffSynth-Studio/Qwen-Image-i2L", allow_file_pattern="assets/lora/3/*", local_dir="data/examples"
     )
     images = [
         Image.open("data/examples/assets/lora/3/0.jpg"),
@@ -101,7 +132,9 @@ def demo_coarse_fine_bias():
     with torch.no_grad():
         embs = QwenImageUnit_Image2LoRAEncode().process(pipe, image2lora_images=images)
         lora = QwenImageUnit_Image2LoRADecode().process(pipe, **embs)["lora"]
-        lora_bias = ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Bias.safetensors")
+        lora_bias = ModelConfig(
+            model_id="DiffSynth-Studio/Qwen-Image-i2L", origin_file_pattern="Qwen-Image-i2L-Bias.safetensors"
+        )
         lora_bias.download_if_necessary()
         lora_bias = load_state_dict(lora_bias.path, torch_dtype=torch.bfloat16, device="cuda")
         lora = merge_lora([lora, lora_bias])
@@ -113,12 +146,22 @@ def generate_image(lora_path, prompt, seed):
         torch_dtype=torch.bfloat16,
         device="cuda",
         model_configs=[
-            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-            ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+            ModelConfig(
+                model_id="Qwen/Qwen-Image",
+                origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
+                **vram_config,
+            ),
+            ModelConfig(
+                model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config
+            ),
+            ModelConfig(
+                model_id="Qwen/Qwen-Image",
+                origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
+                **vram_config,
+            ),
         ],
         tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
-        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+        vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
     )
     pipe.load_lora(pipe.dit, lora_path)
     image = pipe(prompt, seed=seed, height=1024, width=1024, num_inference_steps=50)

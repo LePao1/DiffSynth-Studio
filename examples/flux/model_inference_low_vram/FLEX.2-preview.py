@@ -20,17 +20,24 @@ pipe = FluxImagePipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="ostris/Flex.2-preview", origin_file_pattern="Flex.2-preview.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev",
+            origin_file_pattern="text_encoder/model.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config
+        ),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
 )
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl, long hair, red t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
-    seed=0
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    seed=0,
 )
 image.save("image_1.jpg")
 
@@ -43,9 +50,11 @@ inpaint_image = image
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl with sunglasses, long hair, red t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
-    flex_inpaint_image=inpaint_image, flex_inpaint_mask=mask,
-    seed=4
+    num_inference_steps=50,
+    embedded_guidance=3.5,
+    flex_inpaint_image=inpaint_image,
+    flex_inpaint_mask=mask,
+    seed=4,
 )
 image.save("image_2.jpg")
 
@@ -54,8 +63,9 @@ control_image.save("image_control.jpg")
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl with sunglasses, long hair, yellow t-shirt, sunshine, beach",
-    num_inference_steps=50, embedded_guidance=3.5,
+    num_inference_steps=50,
+    embedded_guidance=3.5,
     flex_control_image=control_image,
-    seed=4
+    seed=4,
 )
 image.save("image_3.jpg")

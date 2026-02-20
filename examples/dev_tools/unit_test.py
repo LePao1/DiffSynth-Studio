@@ -1,9 +1,12 @@
 import os, shutil, multiprocessing, time
+
 NUM_GPUS = 7
 
 
 def script_is_processed(output_path, script):
-    return os.path.exists(os.path.join(output_path, script)) and "log.txt" in os.listdir(os.path.join(output_path, script))
+    return os.path.exists(os.path.join(output_path, script)) and "log.txt" in os.listdir(
+        os.path.join(output_path, script)
+    )
 
 
 def filter_unprocessed_tasks(script_path):
@@ -60,11 +63,14 @@ def run_train_multi_GPU(script_path):
         print(cmd, flush=True)
         os.system(cmd)
         time.sleep(1)
-        
+
 
 def run_train_single_GPU(script_path):
     tasks = filter_unprocessed_tasks(script_path)
-    processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, NUM_GPUS)) for i in range(NUM_GPUS)]
+    processes = [
+        multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, NUM_GPUS))
+        for i in range(NUM_GPUS)
+    ]
     for p in processes:
         p.start()
     for p in processes:
@@ -84,7 +90,7 @@ def test_qwen_image():
     run_inference("examples/qwen_image/model_training/validate_full")
     run_train_single_GPU("examples/qwen_image/model_training/lora")
     run_inference("examples/qwen_image/model_training/validate_lora")
-    
+
 
 def test_wan():
     run_train_single_GPU("examples/wanvideo/model_inference")

@@ -16,9 +16,15 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="google/gemma-3-12b-it-qat-q4_0-unquantized",
+            origin_file_pattern="model-*.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled.safetensors", **vram_config),
-        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
 )
@@ -51,7 +57,7 @@ video, audio = pipe(
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path='ltx2_distilled.mp4',
+    output_path="ltx2_distilled.mp4",
     fps=24,
     audio_sample_rate=24000,
 )
