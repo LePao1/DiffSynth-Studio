@@ -40,8 +40,8 @@ class PipelineUnit:
         if self.input_params_nega is not None:
             for _, param in self.input_params_nega.items():
                 params.append(param)
-        params = sorted(list(set(params)))
-        return params
+        params = sorted(set(params))
+        return params  # noqa: RET504 – readability
 
     def fetch_output_params(self):
         params = []
@@ -120,7 +120,7 @@ class BasePipeline(torch.nn.Module):
         image = image.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
         image = image * ((max_value - min_value) / 255) + min_value
         image = repeat(image, f"H W C -> {pattern}", **({"B": 1} if "B" in pattern else {}))
-        return image
+        return image  # noqa: RET504 – readability
 
     def preprocess_video(self, video, torch_dtype=None, device=None, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a list of PIL.Image to torch.Tensor
@@ -131,7 +131,7 @@ class BasePipeline(torch.nn.Module):
             for image in video
         ]
         video = torch.stack(video, dim=pattern.index("T") // 2)
-        return video
+        return video  # noqa: RET504 – readability
 
     def vae_output_to_image(self, vae_output, pattern="B C H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to PIL.Image
@@ -140,7 +140,7 @@ class BasePipeline(torch.nn.Module):
         image = ((vae_output - min_value) * (255 / (max_value - min_value))).clip(0, 255)
         image = image.to(device="cpu", dtype=torch.uint8)
         image = Image.fromarray(image.numpy())
-        return image
+        return image  # noqa: RET504 – readability
 
     def vae_output_to_video(self, vae_output, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to list of PIL.Image
@@ -150,13 +150,13 @@ class BasePipeline(torch.nn.Module):
             self.vae_output_to_image(image, pattern="H W C", min_value=min_value, max_value=max_value)
             for image in vae_output
         ]
-        return video
+        return video  # noqa: RET504 – readability
 
     def load_models_to_device(self, model_names):  # noqa: C901
         if self.vram_management_enabled:
             # offload models
             for name, model in self.named_children():
-                if name not in model_names:
+                if name not in model_names:  # noqa: SIM102 – readability
                     if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                         if hasattr(model, "offload"):
                             model.offload()
@@ -167,7 +167,7 @@ class BasePipeline(torch.nn.Module):
             getattr(torch, self.device_type).empty_cache()
             # onload models
             for name, model in self.named_children():
-                if name in model_names:
+                if name in model_names:  # noqa: SIM102 – readability
                     if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                         if hasattr(model, "onload"):
                             model.onload()
@@ -183,7 +183,7 @@ class BasePipeline(torch.nn.Module):
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
         noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
-        return noise
+        return noise  # noqa: RET504 – readability
 
     def get_vram(self):
         device = self.device if not IS_NPU_AVAILABLE else get_device_name()
@@ -221,7 +221,7 @@ class BasePipeline(torch.nn.Module):
             )
             noise_pred = self.blend_with_mask(noise_pred_expected, noise_pred, inpaint_mask)
         latents_next = scheduler.step(noise_pred, timestep, latents)
-        return latents_next
+        return latents_next  # noqa: RET504 – readability
 
     def split_pipeline_units(self, model_names: list[str]):
         return PipelineUnitGraph().split_pipeline_units(self.units, model_names)
@@ -277,7 +277,7 @@ class BasePipeline(torch.nn.Module):
 
     def clear_lora(self, verbose=1):
         cleared_num = 0
-        for name, module in self.named_modules():
+        for _name, module in self.named_modules():
             if isinstance(module, AutoWrappedLinear):
                 if hasattr(module, "lora_A_weights"):
                     if len(module.lora_A_weights) > 0:
@@ -288,7 +288,9 @@ class BasePipeline(torch.nn.Module):
         if verbose >= 1:
             print(f"{cleared_num} LoRA layers are cleared.")
 
-    def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None):
+    def download_and_load_models(self, model_configs: list[ModelConfig] = None, vram_limit: float = None):
+        if model_configs is None:
+            model_configs = []
         model_pool = ModelPool()
         for model_config in model_configs:
             model_config.download_if_necessary()
@@ -323,7 +325,8 @@ class BasePipeline(torch.nn.Module):
             if isinstance(noise_pred_posi, tuple):
                 # Separately handling different output types of latents, eg. video and audio latents.
                 noise_pred = tuple(
-                    n_nega + cfg_scale * (n_posi - n_nega) for n_posi, n_nega in zip(noise_pred_posi, noise_pred_nega)
+                    n_nega + cfg_scale * (n_posi - n_nega)
+                    for n_posi, n_nega in zip(noise_pred_posi, noise_pred_nega, strict=False)
                 )
             else:
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
@@ -353,7 +356,7 @@ class PipelineUnitGraph:
         # Establish updating chains for each variable
         # to track their computation process.
         params = sum([unit.fetch_input_params() + unit.fetch_output_params() for unit in units], [])
-        params = sorted(list(set(params)))
+        params = sorted(set(params))
         chains = {param: [] for param in params}
         for unit_id, unit in enumerate(units):
             for param in unit.fetch_output_params():
@@ -372,7 +375,7 @@ class PipelineUnitGraph:
 
     def search_related_unit_ids(self, edges, start_unit_ids, direction="target"):
         # Search for subsequent related computation units.
-        related_unit_ids = [unit_id for unit_id in start_unit_ids]
+        related_unit_ids = list(start_unit_ids)
         while True:
             neighbors = []
             for source, target in edges:
@@ -380,12 +383,12 @@ class PipelineUnitGraph:
                     neighbors.append(target)
                 elif direction == "source" and source not in related_unit_ids and target in related_unit_ids:
                     neighbors.append(source)
-            neighbors = sorted(list(set(neighbors)))
+            neighbors = sorted(set(neighbors))
             if len(neighbors) == 0:
                 break
             related_unit_ids.extend(neighbors)
-        related_unit_ids = sorted(list(set(related_unit_ids)))
-        return related_unit_ids
+        related_unit_ids = sorted(set(related_unit_ids))
+        return related_unit_ids  # noqa: RET504 – readability
 
     def search_updating_unit_ids(self, units: list[PipelineUnit], chains, related_unit_ids):
         # If the input parameters of this subgraph are updated outside the subgraph,
@@ -404,8 +407,8 @@ class PipelineUnitGraph:
                     if unit_id_ not in related_unit_ids:
                         updating_unit_ids.append(unit_id_)
         related_unit_ids.extend(updating_unit_ids)
-        related_unit_ids = sorted(list(set(related_unit_ids)))
-        return related_unit_ids
+        related_unit_ids = sorted(set(related_unit_ids))
+        return related_unit_ids  # noqa: RET504 – readability
 
     def split_pipeline_units(self, units: list[PipelineUnit], model_names: list[str]):
         # Split the computation graph,

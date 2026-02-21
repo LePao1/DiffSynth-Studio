@@ -20,7 +20,7 @@ def _get_version():
 
         pyproject_path = os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
 
-        if sys.version_info >= (3, 11):
+        if sys.version_info >= (3, 11):  # noqa: UP036 – project supports Python 3.10 which lacks tomllib
             import tomllib
 
             with open(pyproject_path, "rb") as f:

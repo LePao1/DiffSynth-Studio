@@ -41,7 +41,7 @@ class GeneralLoRALoader:
     def fuse_lora_to_base_model(self, model: torch.nn.Module, state_dict, alpha=1.0):
         updated_num = 0
         state_dict = self.convert_state_dict(state_dict)
-        lora_layer_names = set([i.replace(".lora_B.weight", "") for i in state_dict if i.endswith(".lora_B.weight")])
+        lora_layer_names = {i.replace(".lora_B.weight", "") for i in state_dict if i.endswith(".lora_B.weight")}
         for name, module in model.named_modules():
             if name in lora_layer_names:
                 weight_up = state_dict[name + ".lora_B.weight"].to(device=self.device, dtype=self.torch_dtype)

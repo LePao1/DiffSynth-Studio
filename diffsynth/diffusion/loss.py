@@ -26,7 +26,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep)
-    return loss
+    return loss  # noqa: RET504 – readability
 
 
 def DirectDistillLoss(pipe: BasePipeline, **inputs):
@@ -38,7 +38,7 @@ def DirectDistillLoss(pipe: BasePipeline, **inputs):
         noise_pred = pipe.model_fn(**models, **inputs, timestep=timestep, progress_id=progress_id)
         inputs["latents"] = pipe.step(pipe.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs)
     loss = torch.nn.functional.mse_loss(inputs["latents"].float(), inputs["input_latents"].float())
-    return loss
+    return loss  # noqa: RET504 – readability
 
 
 class TrajectoryImitationLoss(torch.nn.Module):
@@ -164,7 +164,7 @@ class TrajectoryImitationLoss(torch.nn.Module):
         image_pred = pipe.vae_decoder(inputs_shared["latents"])
         image_real = pipe.vae_decoder(trajectory_teacher[-1])
         loss = self.loss_fn(image_pred.float(), image_real.float())
-        return loss
+        return loss  # noqa: RET504 – readability
 
     def forward(self, pipe: BasePipeline, inputs_shared, inputs_posi, inputs_nega):
         if not self.initialized:
@@ -180,4 +180,4 @@ class TrajectoryImitationLoss(torch.nn.Module):
         )
         loss_2 = self.compute_regularization(pipe, trajectory_teacher, inputs_shared, inputs_posi, inputs_nega, 8, 1)
         loss = loss_1 + loss_2
-        return loss
+        return loss  # noqa: RET504 – readability

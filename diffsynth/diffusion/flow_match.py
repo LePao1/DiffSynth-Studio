@@ -51,7 +51,7 @@ class FlowMatchScheduler:
         m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
         b = base_shift - m * base_seq_len
         mu = image_seq_len * m + b
-        return mu
+        return mu  # noqa: RET504 – readability
 
     @staticmethod
     def set_timesteps_qwen_image(
@@ -217,12 +217,12 @@ class FlowMatchScheduler:
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
-        if to_final or timestep_id + 1 >= len(self.timesteps):
+        if to_final or timestep_id + 1 >= len(self.timesteps):  # noqa: SIM108 – readability
             sigma_ = 0
         else:
             sigma_ = self.sigmas[timestep_id + 1]
         prev_sample = sample + model_output * (sigma_ - sigma)
-        return prev_sample
+        return prev_sample  # noqa: RET504 – readability
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
         if isinstance(timestep, torch.Tensor):
@@ -230,7 +230,7 @@ class FlowMatchScheduler:
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         model_output = (sample - sample_stablized) / sigma
-        return model_output
+        return model_output  # noqa: RET504 – readability
 
     def add_noise(self, original_samples, noise, timestep):
         if isinstance(timestep, torch.Tensor):
@@ -238,13 +238,13 @@ class FlowMatchScheduler:
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         sample = (1 - sigma) * original_samples + sigma * noise
-        return sample
+        return sample  # noqa: RET504 – readability
 
     def training_target(self, sample, noise, timestep):
         target = noise - sample
-        return target
+        return target  # noqa: RET504 – readability
 
     def training_weight(self, timestep):
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
         weights = self.linear_timesteps_weights[timestep_id]
-        return weights
+        return weights  # noqa: RET504 – readability

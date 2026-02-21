@@ -53,10 +53,9 @@ class ModelConfig:
                     return True
                 if os.environ.get("DIFFSYNTH_SKIP_DOWNLOAD").lower() == "false":
                     return False
-            else:
-                return False
-        else:
-            return self.skip_download
+                return None
+            return False
+        return self.skip_download
 
     def download(self):
         origin_file_pattern = self.parse_original_file_pattern()

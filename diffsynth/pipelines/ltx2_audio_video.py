@@ -25,7 +25,7 @@ from ..utils.data.media_io_ltx2 import ltx2_preprocess
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -64,12 +64,14 @@ class LTX2AudioVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),  # noqa: B008 – public API default
         stage2_lora_config: ModelConfig | None = None,
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = LTX2AudioVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -298,7 +300,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         b, _, f, h, w = latents.shape
         denoise_mask = torch.ones((b, 1, f, h, w), dtype=latents.dtype, device=latents.device)
         initial_latents = torch.zeros_like(latents) if initial_latents is None else initial_latents
-        for idx, input_latent in zip(input_indexes, input_latents):
+        for idx, input_latent in zip(input_indexes, input_latents, strict=False):
             idx = min(max(1 + (idx - 1) // 8, 0), f - 1)
             input_latent = input_latent.to(dtype=latents.dtype, device=latents.device)
             initial_latents[:, :, idx : idx + input_latent.shape[2], :, :] = input_latent
@@ -324,7 +326,7 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
             )
         if inputs_shared.get("use_two_stage_pipeline", False):
             # distill pipeline also uses two-stage, but it does not needs lora
-            if not inputs_shared.get("use_distilled_pipeline", False):
+            if not inputs_shared.get("use_distilled_pipeline", False):  # noqa: SIM102 – readability
                 if not (hasattr(pipe, "stage2_lora_path") and pipe.stage2_lora_path is not None):
                     raise ValueError("Two-stage pipeline requested, but stage2_lora_path is not set in the pipeline.")
             if not (hasattr(pipe, "upsampler") and pipe.upsampler is not None):
@@ -439,7 +441,7 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         mask_flattened = rearrange(mask, "b t 1 1 -> b t 1").expand(-1, -1, d * l)
         normed = normed.masked_fill(~mask_flattened, 0.0)
 
-        return normed
+        return normed  # noqa: RET504 – readability
 
     def _run_feature_extractor(
         self, pipe, hidden_states: torch.Tensor, attention_mask: torch.Tensor, padding_side: str = "right"
@@ -591,7 +593,7 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         latent = pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(
             pipe.device
         )
-        return latent
+        return latent  # noqa: RET504 – readability
 
     def process(
         self,

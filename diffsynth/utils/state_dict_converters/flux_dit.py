@@ -91,7 +91,7 @@ def FluxDiTStateDictConverter(state_dict):
     return state_dict_
 
 
-def FluxDiTStateDictConverterFromDiffusers(state_dict):
+def FluxDiTStateDictConverterFromDiffusers(state_dict):  # noqa: C901 – inherent complexity
     global_rename_dict = {
         "context_embedder": "context_embedder",
         "x_embedder": "x_embedder",

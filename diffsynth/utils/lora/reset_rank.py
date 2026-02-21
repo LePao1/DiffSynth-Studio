@@ -12,7 +12,7 @@ def decomposite(tensor_A, tensor_B, rank):
 
 def reset_lora_rank(lora, rank):
     lora_merged = {}
-    keys = [i for i in lora.keys() if ".lora_A." in i]
+    keys = [i for i in lora if ".lora_A." in i]
     for key in keys:
         tensor_A = lora[key]
         tensor_B = lora[key.replace(".lora_A.", ".lora_B.")]

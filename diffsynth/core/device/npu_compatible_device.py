@@ -89,6 +89,7 @@ def parse_device_type(device):
         return "cpu"
     if isinstance(device, torch.device):
         return device.type
+    return None
 
 
 def parse_nccl_backend(device_type):

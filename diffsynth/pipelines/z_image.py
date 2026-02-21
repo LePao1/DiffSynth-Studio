@@ -22,7 +22,7 @@ from ..utils.lora import merge_lora
 
 
 class ZImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -56,14 +56,16 @@ class ZImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"
         ),
         vram_limit: float = None,
         enable_npu_patch: bool = True,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = ZImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -508,7 +510,7 @@ def model_fn_z_image(
     )[0]
     model_output = -model_output
     model_output = rearrange(model_output, "C B H W -> B C H W")
-    return model_output
+    return model_output  # noqa: RET504 – readability
 
 
 class ZImageUnit_Image2LoRAEncode(PipelineUnit):
@@ -532,7 +534,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs
+        return embs  # noqa: RET504 – readability
 
     def encode_images_using_dinov3(self, pipe: ZImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
@@ -541,7 +543,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs
+        return embs  # noqa: RET504 – readability
 
     def encode_images(self, pipe: ZImagePipeline, images: list[Image.Image]):
         if images is None:
@@ -551,7 +553,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
         embs_siglip2 = self.encode_images_using_siglip2(pipe, images)
         embs_dinov3 = self.encode_images_using_dinov3(pipe, images)
         x = torch.concat([embs_siglip2, embs_dinov3], dim=-1)
-        return x
+        return x  # noqa: RET504 – readability
 
     def process(self, pipe: ZImagePipeline, image2lora_images):
         if image2lora_images is None:
@@ -604,7 +606,6 @@ def model_fn_z_image_turbo(
     # Timestep
     timestep = 1000 - timestep
     t_noisy = dit.t_embedder(timestep)
-    t_clean = dit.t_embedder(torch.ones_like(timestep) * 1000)
 
     # Patchify
     latents = rearrange(latents, "B C H W -> C B H W")
@@ -620,7 +621,7 @@ def model_fn_z_image_turbo(
     x_freqs_cis = rearrange(x_freqs_cis, "L C -> 1 L C")
 
     if control_context is not None:
-        kwargs = dict(attn_mask=None, freqs_cis=x_freqs_cis, adaln_input=t_noisy)
+        kwargs = {"attn_mask": None, "freqs_cis": x_freqs_cis, "adaln_input": t_noisy}
         refiner_hints, control_context, control_context_item_seqlens = controlnet.forward_refiner(
             dit,
             x,
@@ -669,7 +670,7 @@ def model_fn_z_image_turbo(
     unified_freqs_cis = torch.cat([x_freqs_cis, cap_freqs_cis], dim=1)
 
     if control_context is not None:
-        kwargs = dict(attn_mask=None, freqs_cis=unified_freqs_cis, adaln_input=t_noisy)
+        kwargs = {"attn_mask": None, "freqs_cis": unified_freqs_cis, "adaln_input": t_noisy}
         hints = controlnet.forward_layers(
             unified,
             cap_feats,
@@ -690,7 +691,7 @@ def model_fn_z_image_turbo(
             freqs_cis=unified_freqs_cis,
             adaln_input=t_noisy,
         )
-        if control_context is not None:
+        if control_context is not None:  # noqa: SIM102 – readability
             if layer_id in controlnet.control_layers_mapping:
                 unified = unified + hints[controlnet.control_layers_mapping[layer_id]] * control_scale
 
@@ -699,7 +700,7 @@ def model_fn_z_image_turbo(
     x = dit.unpatchify([unified[0]], patch_metadata.get("x_size"))[0]
     x = rearrange(x, "C B H W -> B C H W")
     x = -x
-    return x
+    return x  # noqa: RET504 – readability
 
 
 def apply_npu_patch(enable_npu_patch: bool = True):
@@ -715,7 +716,8 @@ def apply_npu_patch(enable_npu_patch: bool = True):
         from ..models.z_image_dit import Attention
 
         warnings.warn(
-            "Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature."
+            "Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature.",
+            stacklevel=2,
         )
         RMSNorm.forward = rms_norm_forward_npu
         Qwen3RMSNorm.forward = rms_norm_forward_transformers_npu

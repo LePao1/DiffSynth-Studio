@@ -13,7 +13,7 @@ class Annotator:
         processor_id: Processor_id,
         model_path="models/Annotators",
         detect_resolution=None,
-        device=get_device_type(),
+        device=get_device_type(),  # noqa: B008 – public API default
         skip_processor=False,
     ):
         if not skip_processor:
@@ -71,4 +71,4 @@ class Annotator:
                 image, detect_resolution=detect_resolution, image_resolution=min(width, height), **kwargs
             )
         image = image.resize((width, height))
-        return image
+        return image  # noqa: RET504 – readability

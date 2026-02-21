@@ -26,7 +26,7 @@ from ..models.wav2vec import WanS2VAudioEncoder
 
 
 class WanVideoPipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -94,11 +94,11 @@ class WanVideoPipeline(BasePipeline):
         self.use_unified_sequence_parallel = True
 
     @staticmethod
-    def from_pretrained(
+    def from_pretrained(  # noqa: C901 – inherent complexity
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"
         ),
         audio_processor_config: ModelConfig = None,
@@ -106,6 +106,8 @@ class WanVideoPipeline(BasePipeline):
         use_usp: bool = False,
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Redirect model path
         if redirect_common_files:
             redirect_dict = {
@@ -487,7 +489,7 @@ class WanVideoUnit_PromptEmbedder(PipelineUnit):
         mask = mask.to(pipe.device)
         seq_lens = mask.gt(0).sum(dim=1).long()
         prompt_emb = pipe.text_encoder(ids, mask)
-        for i, v in enumerate(seq_lens):
+        for _i, v in enumerate(seq_lens):
             prompt_emb[:, v:] = 0
         return prompt_emb
 
@@ -895,7 +897,7 @@ class WanVideoUnit_VAP(PipelineUnit):
         mask = mask.to(pipe.device)
         seq_lens = mask.gt(0).sum(dim=1).long()
         prompt_emb = pipe.text_encoder(ids, mask)
-        for i, v in enumerate(seq_lens):
+        for _i, v in enumerate(seq_lens):
             prompt_emb[:, v:] = 0
         return prompt_emb
 
@@ -988,7 +990,7 @@ class WanVideoUnit_UnifiedSequenceParallel(PipelineUnit):
         super().__init__(input_params=(), output_params=("use_unified_sequence_parallel",))
 
     def process(self, pipe: WanVideoPipeline):
-        if hasattr(pipe, "use_unified_sequence_parallel"):
+        if hasattr(pipe, "use_unified_sequence_parallel"):  # noqa: SIM102 – readability
             if pipe.use_unified_sequence_parallel:
                 return {"use_unified_sequence_parallel": True}
         return {}
@@ -1345,7 +1347,7 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
             onload_model_names=("vae",),
         )
 
-    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=get_device_type()):
+    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=get_device_type()):  # noqa: B008 – public API default
         if mask_pixel_values is None:
             msk = torch.zeros(1, (lat_t - 1) * 4 + 1, lat_h, lat_w, device=device)
         else:
@@ -1354,7 +1356,7 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
         msk = msk.transpose(1, 2)[0]
-        return msk
+        return msk  # noqa: RET504 – readability
 
     def process(
         self,
@@ -1428,7 +1430,7 @@ class TeaCache:
             "Wan2.1-I2V-14B-720P": [8.10705460e03, 2.13393892e03, -3.72934672e02, 1.66203073e01, -4.17769401e-02],
         }
         if model_id not in self.coefficients_dict:
-            supported_model_ids = ", ".join([i for i in self.coefficients_dict])
+            supported_model_ids = ", ".join(list(self.coefficients_dict))
             raise ValueError(
                 f"{model_id} is not a supported TeaCache model id. Please choose a valid model id in ({supported_model_ids})."
             )
@@ -1469,7 +1471,7 @@ class TeaCache:
 
     def update(self, hidden_states):
         hidden_states = hidden_states + self.previous_residual
-        return hidden_states
+        return hidden_states  # noqa: RET504 – readability
 
 
 class TemporalTiler_BCTHW:
@@ -1492,7 +1494,7 @@ class TemporalTiler_BCTHW:
         _, _, T, _, _ = data.shape
         t = self.build_1d_mask(T, is_bound[0], is_bound[1], border_width[0])
         mask = repeat(t, "T -> 1 1 T 1 1")
-        return mask
+        return mask  # noqa: RET504 – readability
 
     def run(
         self,
@@ -1536,7 +1538,7 @@ class TemporalTiler_BCTHW:
         return value
 
 
-def model_fn_wan_video(
+def model_fn_wan_video(  # noqa: C901 – inherent complexity
     dit: WanModel,
     motion_controller: WanMotionControllerModel = None,
     vace: VaceWanModel = None,
@@ -1573,22 +1575,22 @@ def model_fn_wan_video(
     **kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
-        model_kwargs = dict(
-            dit=dit,
-            motion_controller=motion_controller,
-            vace=vace,
-            latents=latents,
-            timestep=timestep,
-            context=context,
-            clip_feature=clip_feature,
-            y=y,
-            reference_latents=reference_latents,
-            vace_context=vace_context,
-            vace_scale=vace_scale,
-            tea_cache=tea_cache,
-            use_unified_sequence_parallel=use_unified_sequence_parallel,
-            motion_bucket_id=motion_bucket_id,
-        )
+        model_kwargs = {
+            "dit": dit,
+            "motion_controller": motion_controller,
+            "vace": vace,
+            "latents": latents,
+            "timestep": timestep,
+            "context": context,
+            "clip_feature": clip_feature,
+            "y": y,
+            "reference_latents": reference_latents,
+            "vace_context": vace_context,
+            "vace_scale": vace_scale,
+            "tea_cache": tea_cache,
+            "use_unified_sequence_parallel": use_unified_sequence_parallel,
+            "motion_bucket_id": motion_bucket_id,
+        }
         return TemporalTiler_BCTHW().run(
             model_fn_wan_video,
             sliding_window_size,
@@ -1728,7 +1730,7 @@ def model_fn_wan_video(
         context_vap = torch.cat([vap_clip_embedding, context_vap], dim=1)
 
     # TeaCache
-    if tea_cache is not None:
+    if tea_cache is not None:  # noqa: SIM108 – readability
         tea_cache_update = tea_cache.check(dit, x, t_mod)
     else:
         tea_cache_update = False
@@ -1745,7 +1747,7 @@ def model_fn_wan_video(
         )
 
     # blocks
-    if use_unified_sequence_parallel:
+    if use_unified_sequence_parallel:  # noqa: SIM102 – readability
         if dist.is_initialized() and dist.get_world_size() > 1:
             chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
             pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
@@ -1822,7 +1824,7 @@ def model_fn_wan_video(
             tea_cache.store(x)
 
     x = dit.head(x, t)
-    if use_unified_sequence_parallel:
+    if use_unified_sequence_parallel:  # noqa: SIM102 – readability
         if dist.is_initialized() and dist.get_world_size() > 1:
             x = get_sp_group().all_gather(x, dim=1)
             x = x[:, :-pad_shape] if pad_shape > 0 else x
@@ -1831,7 +1833,7 @@ def model_fn_wan_video(
         x = x[:, reference_latents.shape[1] :]
         f -= 1
     x = dit.unpatchify(x, (f, h, w))
-    return x
+    return x  # noqa: RET504 – readability
 
 
 def model_fn_longcat_video(
@@ -1861,7 +1863,7 @@ def model_fn_longcat_video(
     )
     output = -output
     output = output.to(latents.dtype)
-    return output
+    return output  # noqa: RET504 – readability
 
 
 def model_fn_wans2v(

@@ -50,7 +50,8 @@ class WanTrainingModule(DiffusionTrainingModule):
         # Warning
         if not use_gradient_checkpointing:
             warnings.warn(
-                "Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing."
+                "Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing.",
+                stacklevel=2,
             )
             use_gradient_checkpointing = True
 
@@ -159,7 +160,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
         loss = self.task_to_loss[self.task](self.pipe, *inputs)
-        return loss
+        return loss  # noqa: RET504 – readability
 
 
 def wan_parser():
