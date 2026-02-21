@@ -203,7 +203,7 @@ class WanVideoPipeline(BasePipeline):
         input_video: list[Image.Image] | None = None,
         denoising_strength: float | None = 1.0,
         # Speech-to-video
-        input_audio: np.array | None = None,
+        input_audio: np.ndarray | None = None,
         audio_embeds: torch.Tensor | None = None,
         audio_sample_rate: int | None = 16000,
         s2v_pose_video: list[Image.Image] | None = None,
