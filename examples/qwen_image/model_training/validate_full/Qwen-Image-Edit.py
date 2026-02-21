@@ -1,7 +1,8 @@
 import torch
 from PIL import Image
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+
 from diffsynth import load_state_dict
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -22,4 +23,4 @@ pipe.dit.load_state_dict(state_dict)
 prompt = "将裙子改为粉色"
 image = Image.open("data/example_image_dataset/edit/image1.jpg").resize((1024, 1024))
 image = pipe(prompt, edit_image=image, seed=0, num_inference_steps=40, height=1024, width=1024)
-image.save(f"image.jpg")
+image.save("image.jpg")

@@ -1,7 +1,8 @@
-from PIL import Image
 import torch
 from modelscope import dataset_snapshot_download, snapshot_download
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from PIL import Image
+
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 from diffsynth.utils.controlnet import Annotator
 
 allow_file_pattern = [
@@ -38,7 +39,7 @@ pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-In-Context-Control-
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/examples_in_diffsynth",
     local_dir="./",
-    allow_file_pattern=f"data/examples/qwen-image-context-control/image.jpg",
+    allow_file_pattern="data/examples/qwen-image-context-control/image.jpg",
 )
 origin_image = Image.open("data/examples/qwen-image-context-control/image.jpg").resize((1024, 1024))
 annotator_ids = ["openpose", "canny", "depth", "lineart", "softedge", "normal"]

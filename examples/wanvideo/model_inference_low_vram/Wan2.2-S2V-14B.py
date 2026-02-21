@@ -1,12 +1,12 @@
 # This script can generate a single video clip.
 # If you need generate long videos, please refer to `Wan2.2-S2V-14B_multi_clips.py`.
-import torch
-from PIL import Image
 import librosa
-from diffsynth.utils.data import VideoData, save_video_with_audio
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+import torch
 from modelscope import dataset_snapshot_download
+from PIL import Image
 
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video_with_audio
 
 vram_config = {
     "offload_dtype": "disk",
@@ -44,7 +44,7 @@ pipe = WanVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_video_dataset",
     local_dir="./data/example_video_dataset",
-    allow_file_pattern=f"wans2v/*",
+    allow_file_pattern="wans2v/*",
 )
 
 num_frames = 81  # 4n+1

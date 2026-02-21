@@ -1,5 +1,7 @@
+import hashlib
+
+import torch
 from safetensors import safe_open
-import torch, hashlib
 
 
 def load_state_dict(file_path, torch_dtype=None, device="cpu", pin_memory=False, verbose=0):
@@ -61,8 +63,7 @@ def convert_state_dict_keys_to_single_str(state_dict, with_shape=True):
             elif isinstance(value, dict):
                 keys.append(key + "|" + convert_state_dict_keys_to_single_str(value, with_shape=with_shape))
     keys.sort()
-    keys_str = ",".join(keys)
-    return keys_str
+    return ",".join(keys)
 
 
 def hash_state_dict_keys(state_dict, with_shape=True):
@@ -79,8 +80,7 @@ def load_keys_dict(file_path):
         return state_dict
     if file_path.endswith(".safetensors"):
         return load_keys_dict_from_safetensors(file_path)
-    else:
-        return load_keys_dict_from_bin(file_path)
+    return load_keys_dict_from_bin(file_path)
 
 
 def load_keys_dict_from_safetensors(file_path):

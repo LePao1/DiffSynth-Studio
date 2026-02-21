@@ -1,8 +1,8 @@
-import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
-from PIL import Image
 import numpy as np
+import torch
+from PIL import Image
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 vram_config = {
     "offload_dtype": torch.float8_e4m3fn,

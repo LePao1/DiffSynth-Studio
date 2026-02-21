@@ -1,27 +1,24 @@
-import torch, math, warnings
-from PIL import Image
-from typing import Union
-from tqdm import tqdm
-from einops import rearrange
-import numpy as np
-from typing import Union, List, Optional, Tuple, Iterable, Dict
+import warnings
 
-from ..core.device.npu_compatible_device import get_device_type, IS_NPU_AVAILABLE
-from ..diffusion import FlowMatchScheduler
+import torch
+from einops import rearrange
+from PIL import Image
+from tqdm import tqdm
+from transformers import AutoTokenizer
+
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..core.data.operators import ImageCropAndResize
-from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
-from ..utils.lora import merge_lora
-
-from transformers import AutoTokenizer
-from ..models.z_image_text_encoder import ZImageTextEncoder
-from ..models.z_image_dit import ZImageDiT
-from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
-from ..models.siglip2_image_encoder import Siglip2ImageEncoder428M
-from ..models.z_image_controlnet import ZImageControlNet
-from ..models.siglip2_image_encoder import Siglip2ImageEncoder
+from ..core.device.npu_compatible_device import IS_NPU_AVAILABLE, get_device_type
+from ..diffusion import FlowMatchScheduler
+from ..diffusion.base_pipeline import BasePipeline, ControlNetInput, PipelineUnit
 from ..models.dinov3_image_encoder import DINOv3ImageEncoder
+from ..models.flux_vae import FluxVAEDecoder, FluxVAEEncoder
+from ..models.siglip2_image_encoder import Siglip2ImageEncoder, Siglip2ImageEncoder428M
+from ..models.z_image_controlnet import ZImageControlNet
+from ..models.z_image_dit import ZImageDiT
 from ..models.z_image_image2lora import ZImageImage2LoRAModel
+from ..models.z_image_text_encoder import ZImageTextEncoder
+from ..utils.lora import merge_lora
 
 
 class ZImagePipeline(BasePipeline):
@@ -59,7 +56,7 @@ class ZImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(
             model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"
@@ -114,10 +111,10 @@ class ZImagePipeline(BasePipeline):
         num_inference_steps: int = 8,
         sigma_shift: float = None,
         # ControlNet
-        controlnet_inputs: List[ControlNetInput] = None,
+        controlnet_inputs: list[ControlNetInput] = None,
         # Image to LoRA
-        image2lora_images: List[Image.Image] = None,
-        positive_only_lora: Dict[str, torch.Tensor] = None,
+        image2lora_images: list[Image.Image] = None,
+        positive_only_lora: dict[str, torch.Tensor] = None,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
@@ -205,10 +202,10 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
     def encode_prompt(
         self,
         pipe,
-        prompt: Union[str, List[str]],
-        device: Optional[torch.device] = None,
+        prompt: str | list[str],
+        device: torch.device | None = None,
         max_sequence_length: int = 512,
-    ) -> List[torch.FloatTensor]:
+    ) -> list[torch.FloatTensor]:
         if isinstance(prompt, str):
             prompt = [prompt]
 
@@ -251,11 +248,11 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
     def encode_prompt_omni(
         self,
         pipe,
-        prompt: Union[str, List[str]],
+        prompt: str | list[str],
         edit_image=None,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         max_sequence_length: int = 512,
-    ) -> List[torch.FloatTensor]:
+    ) -> list[torch.FloatTensor]:
         if isinstance(prompt, str):
             prompt = [prompt]
 
@@ -355,9 +352,8 @@ class ZImageUnit_InputImageEmbedder(PipelineUnit):
         input_latents = pipe.vae_encoder(image)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents, "input_latents": input_latents}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents, "input_latents": input_latents}
 
 
 class ZImageUnit_EditImageAutoResize(PipelineUnit):
@@ -424,7 +420,7 @@ class ZImageUnit_PAIControlNet(PipelineUnit):
             onload_model_names=("vae_encoder",),
         )
 
-    def process(self, pipe: ZImagePipeline, controlnet_inputs: List[ControlNetInput], height, width):
+    def process(self, pipe: ZImagePipeline, controlnet_inputs: list[ControlNetInput], height, width):
         if controlnet_inputs is None:
             return {}
         if len(controlnet_inputs) != 1:
@@ -708,14 +704,15 @@ def model_fn_z_image_turbo(
 
 def apply_npu_patch(enable_npu_patch: bool = True):
     if IS_NPU_AVAILABLE and enable_npu_patch:
-        from ..models.general_modules import RMSNorm
         from transformers.models.qwen3.modeling_qwen3 import Qwen3RMSNorm
-        from ..models.z_image_dit import Attention
+
         from ..core.npu_patch.npu_fused_operator import (
             rms_norm_forward_npu,
             rms_norm_forward_transformers_npu,
             rotary_emb_Zimage_npu,
         )
+        from ..models.general_modules import RMSNorm
+        from ..models.z_image_dit import Attention
 
         warnings.warn(
             "Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature."

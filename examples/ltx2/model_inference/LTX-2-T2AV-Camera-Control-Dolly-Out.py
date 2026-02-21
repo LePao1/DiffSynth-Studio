@@ -1,4 +1,5 @@
 import torch
+
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 
@@ -68,7 +69,7 @@ video, audio = pipe(
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path=f"ltx2_dolly_out.mp4",
+    output_path="ltx2_dolly_out.mp4",
     fps=24,
     audio_sample_rate=24000,
 )

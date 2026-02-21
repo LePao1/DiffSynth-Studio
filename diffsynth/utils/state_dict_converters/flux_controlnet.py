@@ -77,17 +77,17 @@ def FluxControlNetStateDictConverter(state_dict):
             name_ = name.replace(".proj_in_besides_attn.", ".to_qkv_mlp.")
             param = torch.concat(
                 [
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_q.")],
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_k.")],
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_v.")],
+                    state_dict_[name.replace(".proj_in_besides_attn.", ".a_to_q.")],
+                    state_dict_[name.replace(".proj_in_besides_attn.", ".a_to_k.")],
+                    state_dict_[name.replace(".proj_in_besides_attn.", ".a_to_v.")],
                     state_dict_[name],
                 ],
                 dim=0,
             )
             state_dict_[name_] = param
-            state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_q."))
-            state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_k."))
-            state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_v."))
+            state_dict_.pop(name.replace(".proj_in_besides_attn.", ".a_to_q."))
+            state_dict_.pop(name.replace(".proj_in_besides_attn.", ".a_to_k."))
+            state_dict_.pop(name.replace(".proj_in_besides_attn.", ".a_to_v."))
             state_dict_.pop(name)
     for name in list(state_dict_.keys()):
         for component in ["a", "b"]:

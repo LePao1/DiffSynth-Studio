@@ -2,11 +2,11 @@
 # We recommend to use `examples/wanvideo/model_inference_low_vram/Wan2.2-VACE-Fun-A14B.py`.
 # CPU Offload is enabled in this example.
 import torch
-from PIL import Image
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+from PIL import Image
 
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video
 
 vram_config = {
     "offload_dtype": torch.bfloat16,

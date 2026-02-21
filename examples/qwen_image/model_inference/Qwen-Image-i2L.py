@@ -1,15 +1,16 @@
+import torch
+from modelscope import snapshot_download
+from PIL import Image
+from safetensors.torch import save_file
+
+from diffsynth import load_state_dict
 from diffsynth.pipelines.qwen_image import (
-    QwenImagePipeline,
     ModelConfig,
-    QwenImageUnit_Image2LoRAEncode,
+    QwenImagePipeline,
     QwenImageUnit_Image2LoRADecode,
+    QwenImageUnit_Image2LoRAEncode,
 )
 from diffsynth.utils.lora import merge_lora
-from diffsynth import load_state_dict
-from modelscope import snapshot_download
-from safetensors.torch import save_file
-import torch
-from PIL import Image
 
 
 def demo_style():
@@ -115,8 +116,7 @@ def generate_image(lora_path, prompt, seed):
         tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
     )
     pipe.load_lora(pipe.dit, lora_path)
-    image = pipe(prompt, seed=seed, height=1024, width=1024, num_inference_steps=50)
-    return image
+    return pipe(prompt, seed=seed, height=1024, width=1024, num_inference_steps=50)
 
 
 demo_style()

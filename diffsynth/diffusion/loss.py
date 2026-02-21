@@ -1,5 +1,6 @@
-from .base_pipeline import BasePipeline
 import torch
+
+from .base_pipeline import BasePipeline
 
 
 def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):

@@ -1,11 +1,9 @@
 import torch
-import PIL
-from PIL import Image
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
-from typing import List
+from PIL import Image
 
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video
 
 # This model doesn't support fine-grained VRAM Management due to its special architecture.
 # Only CPU Offload is supported.

@@ -1,21 +1,23 @@
-import torch, copy
-from typing import Union
-from .initialization import skip_model_initialization
+import copy
+
+import torch
+
+from ..device import IS_NPU_AVAILABLE, get_device_name, parse_device_type
 from .disk_map import DiskMap
-from ..device import parse_device_type, get_device_name, IS_NPU_AVAILABLE
+from .initialization import skip_model_initialization
 
 
 class AutoTorchModule(torch.nn.Module):
     def __init__(
         self,
         offload_dtype: torch.dtype = None,
-        offload_device: Union[str, torch.device] = None,
+        offload_device: str | torch.device = None,
         onload_dtype: torch.dtype = None,
-        onload_device: Union[str, torch.device] = None,
+        onload_device: str | torch.device = None,
         preparing_dtype: torch.dtype = None,
-        preparing_device: Union[str, torch.device] = None,
+        preparing_device: str | torch.device = None,
         computation_dtype: torch.dtype = None,
-        computation_device: Union[str, torch.device] = None,
+        computation_device: str | torch.device = None,
         vram_limit: float = None,
     ):
         super().__init__()
@@ -37,13 +39,13 @@ class AutoTorchModule(torch.nn.Module):
     def set_dtype_and_device(
         self,
         offload_dtype: torch.dtype = None,
-        offload_device: Union[str, torch.device] = None,
+        offload_device: str | torch.device = None,
         onload_dtype: torch.dtype = None,
-        onload_device: Union[str, torch.device] = None,
+        onload_device: str | torch.device = None,
         preparing_dtype: torch.dtype = None,
-        preparing_device: Union[str, torch.device] = None,
+        preparing_device: str | torch.device = None,
         computation_dtype: torch.dtype = None,
-        computation_device: Union[str, torch.device] = None,
+        computation_device: str | torch.device = None,
         vram_limit: float = None,
     ):
         self.offload_dtype = offload_dtype or computation_dtype
@@ -80,8 +82,7 @@ class AutoTorchModule(torch.nn.Module):
     def param_name(self, name):
         if self.name == "":
             return name
-        else:
-            return self.name + "." + name
+        return self.name + "." + name
 
 
 class AutoWrappedModule(AutoTorchModule):
@@ -89,13 +90,13 @@ class AutoWrappedModule(AutoTorchModule):
         self,
         module: torch.nn.Module,
         offload_dtype: torch.dtype = None,
-        offload_device: Union[str, torch.device] = None,
+        offload_device: str | torch.device = None,
         onload_dtype: torch.dtype = None,
-        onload_device: Union[str, torch.device] = None,
+        onload_device: str | torch.device = None,
         preparing_dtype: torch.dtype = None,
-        preparing_device: Union[str, torch.device] = None,
+        preparing_device: str | torch.device = None,
         computation_dtype: torch.dtype = None,
-        computation_device: Union[str, torch.device] = None,
+        computation_device: str | torch.device = None,
         vram_limit: float = None,
         name: str = "",
         disk_map: DiskMap = None,
@@ -198,8 +199,7 @@ class AutoWrappedModule(AutoTorchModule):
     def __getattr__(self, name):
         if name in self.__dict__ or name == "module":
             return super().__getattr__(name)
-        else:
-            return getattr(self.module, name)
+        return getattr(self.module, name)
 
 
 class AutoWrappedNonRecurseModule(AutoWrappedModule):
@@ -207,13 +207,13 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         self,
         module: torch.nn.Module,
         offload_dtype: torch.dtype = None,
-        offload_device: Union[str, torch.device] = None,
+        offload_device: str | torch.device = None,
         onload_dtype: torch.dtype = None,
-        onload_device: Union[str, torch.device] = None,
+        onload_device: str | torch.device = None,
         preparing_dtype: torch.dtype = None,
-        preparing_device: Union[str, torch.device] = None,
+        preparing_device: str | torch.device = None,
         computation_dtype: torch.dtype = None,
-        computation_device: Union[str, torch.device] = None,
+        computation_device: str | torch.device = None,
         vram_limit: float = None,
         name: str = "",
         disk_map: DiskMap = None,
@@ -261,8 +261,7 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
     def __getattr__(self, name):
         if name in self.__dict__ or name == "module":
             return super().__getattr__(name)
-        else:
-            return getattr(self.module, name)
+        return getattr(self.module, name)
 
 
 class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
@@ -270,13 +269,13 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self,
         module: torch.nn.Linear,
         offload_dtype: torch.dtype = None,
-        offload_device: Union[str, torch.device] = None,
+        offload_device: str | torch.device = None,
         onload_dtype: torch.dtype = None,
-        onload_device: Union[str, torch.device] = None,
+        onload_device: str | torch.device = None,
         preparing_dtype: torch.dtype = None,
-        preparing_device: Union[str, torch.device] = None,
+        preparing_device: str | torch.device = None,
         computation_dtype: torch.dtype = None,
-        computation_device: Union[str, torch.device] = None,
+        computation_device: str | torch.device = None,
         vram_limit: float = None,
         name: str = "",
         disk_map: DiskMap = None,

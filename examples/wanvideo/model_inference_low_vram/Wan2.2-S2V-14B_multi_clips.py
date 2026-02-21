@@ -1,9 +1,10 @@
-import torch
-from PIL import Image
 import librosa
-from diffsynth.utils.data import VideoData, save_video_with_audio
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig, WanVideoUnit_S2V
+import torch
 from modelscope import dataset_snapshot_download
+from PIL import Image
+
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline, WanVideoUnit_S2V
+from diffsynth.utils.data import VideoData, save_video_with_audio
 
 
 def speech_to_video(
@@ -113,7 +114,7 @@ pipe = WanVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_video_dataset",
     local_dir="./data/example_video_dataset",
-    allow_file_pattern=f"wans2v/*",
+    allow_file_pattern="wans2v/*",
 )
 
 infer_frames = 80  # 4n

@@ -1,6 +1,7 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
 from modelscope import snapshot_download
+
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -37,4 +38,4 @@ image = pipe(
     edit_rope_interpolation=True,
     edit_image_auto_resize=False,
 )
-image.save(f"image2.jpg")
+image.save("image2.jpg")

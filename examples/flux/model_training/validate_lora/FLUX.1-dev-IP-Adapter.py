@@ -1,7 +1,7 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

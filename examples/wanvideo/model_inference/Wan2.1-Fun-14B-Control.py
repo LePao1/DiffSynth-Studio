@@ -1,9 +1,8 @@
 import torch
-from PIL import Image
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -23,7 +22,7 @@ pipe = WanVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/examples_in_diffsynth",
     local_dir="./",
-    allow_file_pattern=f"data/examples/wan/control_video.mp4",
+    allow_file_pattern="data/examples/wan/control_video.mp4",
 )
 
 # Control video

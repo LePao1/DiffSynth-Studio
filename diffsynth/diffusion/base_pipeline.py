@@ -1,14 +1,13 @@
-from PIL import Image
-import torch
 import numpy as np
-from einops import repeat, reduce
-from typing import Union
-from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig, parse_device_type
+import torch
+from einops import reduce, repeat
+from PIL import Image
+
+from ..core import AutoTorchModule, AutoWrappedLinear, ModelConfig, load_state_dict, parse_device_type
+from ..core.device import IS_NPU_AVAILABLE, get_device_name
 from ..core.device.npu_compatible_device import get_device_type
-from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
-from ..utils.controlnet import ControlNetInput
-from ..core.device import get_device_name, IS_NPU_AVAILABLE
+from ..utils.lora import GeneralLoRALoader
 
 
 class PipelineUnit:
@@ -61,7 +60,7 @@ class PipelineUnit:
 class BasePipeline(torch.nn.Module):
     def __init__(
         self,
-        device=get_device_type(),
+        device=get_device_type(),  # noqa: B008
         torch_dtype=torch.float16,
         height_division_factor=64,
         width_division_factor=64,
@@ -106,15 +105,14 @@ class BasePipeline(torch.nn.Module):
             print(f"width % {self.width_division_factor} != 0. We round it up to {width}.")
         if num_frames is None:
             return height, width
-        else:
-            if num_frames % self.time_division_factor != self.time_division_remainder:
-                num_frames = (
-                    num_frames + self.time_division_factor - 1
-                ) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
-                print(
-                    f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}."
-                )
-            return height, width, num_frames
+        if num_frames % self.time_division_factor != self.time_division_remainder:
+            num_frames = (
+                num_frames + self.time_division_factor - 1
+            ) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
+            print(
+                f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}."
+            )
+        return height, width, num_frames
 
     def preprocess_image(self, image, torch_dtype=None, device=None, pattern="B C H W", min_value=-1, max_value=1):
         # Transform a PIL.Image to torch.Tensor
@@ -154,7 +152,7 @@ class BasePipeline(torch.nn.Module):
         ]
         return video
 
-    def load_models_to_device(self, model_names):
+    def load_models_to_device(self, model_names):  # noqa: C901
         if self.vram_management_enabled:
             # offload models
             for name, model in self.named_children():
@@ -196,10 +194,8 @@ class BasePipeline(torch.nn.Module):
             name, suffix = name[: name.index(".")], name[name.index(".") + 1 :]
             if name.isdigit():
                 return self.get_module(model[int(name)], suffix)
-            else:
-                return self.get_module(getattr(model, name), suffix)
-        else:
-            return getattr(model, name)
+            return self.get_module(getattr(model, name), suffix)
+        return getattr(model, name)
 
     def freeze_except(self, model_names):
         self.eval()
@@ -241,7 +237,7 @@ class BasePipeline(torch.nn.Module):
     def load_lora(
         self,
         module: torch.nn.Module,
-        lora_config: Union[ModelConfig, str] = None,
+        lora_config: ModelConfig | str = None,
         alpha=1,
         hotload=None,
         state_dict=None,
@@ -258,20 +254,20 @@ class BasePipeline(torch.nn.Module):
         lora_loader = self.lora_loader(torch_dtype=self.torch_dtype, device=self.device)
         lora = lora_loader.convert_state_dict(lora)
         if hotload is None:
-            hotload = hasattr(module, "vram_management_enabled") and getattr(module, "vram_management_enabled")
+            hotload = hasattr(module, "vram_management_enabled") and module.vram_management_enabled
         if hotload:
-            if not (hasattr(module, "vram_management_enabled") and getattr(module, "vram_management_enabled")):
+            if not (hasattr(module, "vram_management_enabled") and module.vram_management_enabled):
                 raise ValueError("VRAM Management is not enabled. LoRA hotloading is not supported.")
             updated_num = 0
-            for _, module in module.named_modules():
-                if isinstance(module, AutoWrappedLinear):
-                    name = module.name
+            for _, mod in module.named_modules():
+                if isinstance(mod, AutoWrappedLinear):
+                    name = mod.name
                     lora_a_name = f"{name}.lora_A.weight"
                     lora_b_name = f"{name}.lora_B.weight"
                     if lora_a_name in lora and lora_b_name in lora:
                         updated_num += 1
-                        module.lora_A_weights.append(lora[lora_a_name] * alpha)
-                        module.lora_B_weights.append(lora[lora_b_name])
+                        mod.lora_A_weights.append(lora[lora_a_name] * alpha)
+                        mod.lora_B_weights.append(lora[lora_b_name])
             if verbose >= 1:
                 print(
                     f"{updated_num} tensors are patched by LoRA. You can use `pipe.clear_lora()` to clear all LoRA layers."
@@ -311,7 +307,7 @@ class BasePipeline(torch.nn.Module):
     def check_vram_management_state(self):
         vram_management_enabled = False
         for module in self.children():
-            if hasattr(module, "vram_management_enabled") and getattr(module, "vram_management_enabled"):
+            if hasattr(module, "vram_management_enabled") and module.vram_management_enabled:
                 vram_management_enabled = True
         return vram_management_enabled
 
@@ -387,8 +383,7 @@ class PipelineUnitGraph:
             neighbors = sorted(list(set(neighbors)))
             if len(neighbors) == 0:
                 break
-            else:
-                related_unit_ids.extend(neighbors)
+            related_unit_ids.extend(neighbors)
         related_unit_ids = sorted(list(set(related_unit_ids)))
         return related_unit_ids
 
@@ -424,8 +419,7 @@ class PipelineUnitGraph:
             related_unit_ids = self.search_updating_unit_ids(units, chains, related_unit_ids)
             if len(related_unit_ids) == num_related_unit_ids:
                 break
-            else:
-                num_related_unit_ids = len(related_unit_ids)
+            num_related_unit_ids = len(related_unit_ids)
         related_units = [units[i] for i in related_unit_ids]
         unrelated_units = [units[i] for i in range(len(units)) if i not in related_unit_ids]
         return related_units, unrelated_units

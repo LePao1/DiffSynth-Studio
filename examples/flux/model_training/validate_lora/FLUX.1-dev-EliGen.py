@@ -1,5 +1,6 @@
 import torch
 from PIL import Image
+
 from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -30,4 +31,4 @@ image = pipe(
     eligen_entity_prompts=entity_prompts,
     eligen_entity_masks=masks,
 )
-image.save(f"EliGen_lora.png")
+image.save("EliGen_lora.png")

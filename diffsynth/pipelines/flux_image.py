@@ -1,24 +1,22 @@
-import torch, math
-from PIL import Image
-from typing import Union
-from tqdm import tqdm
-from einops import rearrange, repeat
 import numpy as np
+import torch
+from einops import rearrange, repeat
+from PIL import Image
+from tqdm import tqdm
 from transformers import CLIPTokenizer, T5TokenizerFast
 
-from ..core.device.npu_compatible_device import get_device_type
-from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward, load_state_dict
-from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
-from ..utils.lora.flux import FluxLoRALoader
-
+from ..core.device.npu_compatible_device import get_device_type
+from ..core.vram.layers import AutoWrappedLinear
+from ..diffusion import FlowMatchScheduler
+from ..diffusion.base_pipeline import BasePipeline, ControlNetInput, PipelineUnit
 from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder_clip import FluxTextEncoderClip
 from ..models.flux_text_encoder_t5 import FluxTextEncoderT5
-from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+from ..models.flux_vae import FluxVAEDecoder, FluxVAEEncoder
 from ..models.flux_value_control import MultiValueEncoder
 from ..models.step1x_text_encoder import Step1xEditEmbedder
-from ..core.vram.layers import AutoWrappedLinear
+from ..utils.lora.flux import FluxLoRALoader
 
 
 class MultiControlNet(torch.nn.Module):
@@ -113,7 +111,7 @@ class FluxImagePipeline(BasePipeline):
         self.lora_loader = FluxLoRALoader
 
     def enable_lora_merger(self):
-        if not (hasattr(self.dit, "vram_management_enabled") and getattr(self.dit, "vram_management_enabled")):
+        if not (hasattr(self.dit, "vram_management_enabled") and self.dit.vram_management_enabled):
             raise ValueError("DiT VRAM management is not enabled.")
         if self.lora_patcher is not None:
             for name, module in self.dit.named_modules():
@@ -125,7 +123,7 @@ class FluxImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_1_config: ModelConfig = ModelConfig(
             model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer/"
@@ -223,11 +221,11 @@ class FluxImagePipeline(BasePipeline):
         multidiffusion_masks=(),
         multidiffusion_scales=(),
         # Kontext
-        kontext_images: Union[list[Image.Image], Image.Image] = None,
+        kontext_images: list[Image.Image] | Image.Image = None,
         # ControlNet
         controlnet_inputs: list[ControlNetInput] = None,
         # IP-Adapter
-        ipadapter_images: Union[list[Image.Image], Image.Image] = None,
+        ipadapter_images: list[Image.Image] | Image.Image = None,
         ipadapter_scale: float = 1.0,
         # EliGen
         eligen_entity_prompts: list[str] = None,
@@ -244,13 +242,13 @@ class FluxImagePipeline(BasePipeline):
         flex_control_strength: float = 0.5,
         flex_control_stop: float = 0.5,
         # Value Controller
-        value_controller_inputs: Union[list[float], float] = None,
+        value_controller_inputs: list[float] | float = None,
         # Step1x
         step1x_reference_image: Image.Image = None,
         # NexusGen
         nexus_gen_reference_image: Image.Image = None,
         # LoRA Encoder
-        lora_encoder_inputs: Union[list[ModelConfig], ModelConfig, str] = None,
+        lora_encoder_inputs: list[ModelConfig] | ModelConfig | str = None,
         lora_encoder_scale: float = 1.0,
         # TeaCache
         tea_cache_l1_thresh: float = None,
@@ -380,9 +378,8 @@ class FluxImageUnit_InputImageEmbedder(PipelineUnit):
         input_latents = pipe.vae_encoder(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents, "input_latents": None}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents, "input_latents": None}
 
 
 class FluxImageUnit_PromptEmbedder(PipelineUnit):
@@ -443,8 +440,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
                 t5_sequence_length=t5_sequence_length,
             )
             return {"prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb, "text_ids": text_ids}
-        else:
-            return {}
+        return {}
 
 
 class FluxImageUnit_ImageIDs(PipelineUnit):
@@ -773,26 +769,25 @@ class FluxImageUnit_Step1x(PipelineUnit):
         )
 
     def process(self, pipe: FluxImagePipeline, inputs_shared: dict, inputs_posi: dict, inputs_nega: dict):
-        image = inputs_shared.get("step1x_reference_image", None)
+        image = inputs_shared.get("step1x_reference_image")
         if image is None:
             return inputs_shared, inputs_posi, inputs_nega
-        else:
-            pipe.load_models_to_device(self.onload_model_names)
-            prompt = inputs_posi["prompt"]
-            nega_prompt = inputs_nega["negative_prompt"]
-            captions = [prompt, nega_prompt]
-            ref_images = [image, image]
-            embs, masks = pipe.qwenvl(captions, ref_images)
-            image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
-            image = pipe.vae_encoder(image)
-            inputs_posi.update(
-                {"step1x_llm_embedding": embs[0:1], "step1x_mask": masks[0:1], "step1x_reference_latents": image}
+        pipe.load_models_to_device(self.onload_model_names)
+        prompt = inputs_posi["prompt"]
+        nega_prompt = inputs_nega["negative_prompt"]
+        captions = [prompt, nega_prompt]
+        ref_images = [image, image]
+        embs, masks = pipe.qwenvl(captions, ref_images)
+        image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        image = pipe.vae_encoder(image)
+        inputs_posi.update(
+            {"step1x_llm_embedding": embs[0:1], "step1x_mask": masks[0:1], "step1x_reference_latents": image}
+        )
+        if inputs_shared.get("cfg_scale", 1) != 1:
+            inputs_nega.update(
+                {"step1x_llm_embedding": embs[1:2], "step1x_mask": masks[1:2], "step1x_reference_latents": image}
             )
-            if inputs_shared.get("cfg_scale", 1) != 1:
-                inputs_nega.update(
-                    {"step1x_llm_embedding": embs[1:2], "step1x_mask": masks[1:2], "step1x_reference_latents": image}
-                )
-            return inputs_shared, inputs_posi, inputs_nega
+        return inputs_shared, inputs_posi, inputs_nega
 
 
 class FluxImageUnit_TeaCache(PipelineUnit):
@@ -802,8 +797,7 @@ class FluxImageUnit_TeaCache(PipelineUnit):
     def process(self, pipe: FluxImagePipeline, num_inference_steps, tea_cache_l1_thresh):
         if tea_cache_l1_thresh is None:
             return {}
-        else:
-            return {"tea_cache": TeaCache(num_inference_steps=num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh)}
+        return {"tea_cache": TeaCache(num_inference_steps=num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh)}
 
 
 class FluxImageUnit_Flex(PipelineUnit):
@@ -881,8 +875,7 @@ class FluxImageUnit_Flex(PipelineUnit):
                 "flex_uncondition": flex_uncondition,
                 "flex_control_stop_timestep": flex_control_stop_timestep,
             }
-        else:
-            return {}
+        return {}
 
 
 class FluxImageUnit_InfiniteYou(PipelineUnit):
@@ -899,8 +892,7 @@ class FluxImageUnit_InfiniteYou(PipelineUnit):
             return pipe.infinityou_processor.prepare_infinite_you(
                 pipe.image_proj_model, infinityou_id_image, infinityou_guidance, pipe.device
             )
-        else:
-            return {}
+        return {}
 
 
 class FluxImageUnit_ValueControl(PipelineUnit):

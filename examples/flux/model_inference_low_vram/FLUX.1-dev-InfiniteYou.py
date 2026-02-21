@@ -1,10 +1,9 @@
-import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
-from modelscope import dataset_snapshot_download
-from modelscope import snapshot_download
-from PIL import Image
 import numpy as np
+import torch
+from modelscope import dataset_snapshot_download, snapshot_download
+from PIL import Image
 
+from diffsynth.pipelines.flux_image import ControlNetInput, FluxImagePipeline, ModelConfig
 
 # This model has additional requirements.
 # Please install the following packages.
@@ -57,7 +56,7 @@ pipe = FluxImagePipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/examples_in_diffsynth",
     local_dir="./",
-    allow_file_pattern=f"data/examples/infiniteyou/*",
+    allow_file_pattern="data/examples/infiniteyou/*",
 )
 
 height, width = 1024, 1024

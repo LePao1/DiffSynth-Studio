@@ -1,7 +1,11 @@
-import torch, json, os
+import json
+import os
+
+import torch
+from peft import LoraConfig, inject_adapter_in_model
+
 from ..core import ModelConfig, load_state_dict
 from ..utils.controlnet import ControlNetInput
-from peft import LoraConfig, inject_adapter_in_model
 
 
 class DiffusionTrainingModule(torch.nn.Module):
@@ -62,22 +66,21 @@ class DiffusionTrainingModule(torch.nn.Module):
     def transfer_data_to_device(self, data, device, torch_float_dtype=None):
         if data is None:
             return data
-        elif isinstance(data, torch.Tensor):
+        if isinstance(data, torch.Tensor):
             data = data.to(device)
             if torch_float_dtype is not None and data.dtype in [torch.float, torch.float16, torch.bfloat16]:
                 data = data.to(torch_float_dtype)
             return data
-        elif isinstance(data, tuple):
+        if isinstance(data, tuple):
             data = tuple(self.transfer_data_to_device(x, device, torch_float_dtype) for x in data)
             return data
-        elif isinstance(data, list):
+        if isinstance(data, list):
             data = list(self.transfer_data_to_device(x, device, torch_float_dtype) for x in data)
             return data
-        elif isinstance(data, dict):
+        if isinstance(data, dict):
             data = {i: self.transfer_data_to_device(data[i], device, torch_float_dtype) for i in data}
             return data
-        else:
-            return data
+        return data
 
     def parse_vram_config(self, fp8=False, offload=False, device="cpu"):
         if fp8:
@@ -91,7 +94,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                 "computation_dtype": torch.bfloat16,
                 "computation_device": device,
             }
-        elif offload:
+        if offload:
             return {
                 "offload_dtype": "disk",
                 "offload_device": "disk",
@@ -103,8 +106,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                 "computation_device": device,
                 "clear_parameters": True,
             }
-        else:
-            return {}
+        return {}
 
     def parse_model_configs(
         self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"
@@ -138,17 +140,16 @@ class DiffusionTrainingModule(torch.nn.Module):
     def parse_path_or_model_id(self, model_id_with_origin_path, default_value=None):
         if model_id_with_origin_path is None:
             return default_value
-        elif os.path.exists(model_id_with_origin_path):
+        if os.path.exists(model_id_with_origin_path):
             return ModelConfig(path=model_id_with_origin_path)
-        else:
-            if ":" not in model_id_with_origin_path:
-                raise ValueError(
-                    f"Failed to parse model config: {model_id_with_origin_path}. This is neither a valid path nor in the format of `model_id/origin_file_pattern`."
-                )
-            split_id = model_id_with_origin_path.rfind(":")
-            model_id = model_id_with_origin_path[:split_id]
-            origin_file_pattern = model_id_with_origin_path[split_id + 1 :]
-            return ModelConfig(model_id=model_id, origin_file_pattern=origin_file_pattern)
+        if ":" not in model_id_with_origin_path:
+            raise ValueError(
+                f"Failed to parse model config: {model_id_with_origin_path}. This is neither a valid path nor in the format of `model_id/origin_file_pattern`."
+            )
+        split_id = model_id_with_origin_path.rfind(":")
+        model_id = model_id_with_origin_path[:split_id]
+        origin_file_pattern = model_id_with_origin_path[split_id + 1 :]
+        return ModelConfig(model_id=model_id, origin_file_pattern=origin_file_pattern)
 
     def auto_detect_lora_target_modules(
         self,

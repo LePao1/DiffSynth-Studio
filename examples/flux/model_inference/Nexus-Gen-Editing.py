@@ -1,9 +1,10 @@
 import importlib
-import torch
-from PIL import Image
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
-from modelscope import dataset_snapshot_download
 
+import torch
+from modelscope import dataset_snapshot_download
+from PIL import Image
+
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 if importlib.util.find_spec("transformers") is None:
     raise ImportError(
@@ -33,7 +34,7 @@ pipe = FluxImagePipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/examples_in_diffsynth",
     local_dir="./",
-    allow_file_pattern=f"data/examples/nexusgen/cat.jpg",
+    allow_file_pattern="data/examples/nexusgen/cat.jpg",
 )
 ref_image = Image.open("data/examples/nexusgen/cat.jpg").convert("RGB")
 prompt = "Add a crown."

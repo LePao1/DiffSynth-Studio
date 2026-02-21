@@ -1,8 +1,9 @@
 import torch
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-from PIL import Image
 from modelscope import dataset_snapshot_download
+from PIL import Image
+
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video
 
 vram_config = {
     "offload_dtype": "disk",

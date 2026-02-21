@@ -1,8 +1,10 @@
 import random
+
 import torch
-from PIL import Image, ImageDraw, ImageFont
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+from PIL import Image, ImageDraw, ImageFont
+
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
@@ -36,7 +38,7 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
     # Font settings
     try:
         font = ImageFont.truetype("arial", font_size)  # Adjust as needed
-    except IOError:
+    except OSError:
         font = ImageFont.load_default(font_size)
 
     # Overlay each mask onto the overlay image

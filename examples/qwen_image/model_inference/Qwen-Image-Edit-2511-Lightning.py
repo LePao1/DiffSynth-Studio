@@ -1,7 +1,8 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig, FlowMatchScheduler
+import torch
 from modelscope import dataset_snapshot_download
 from PIL import Image
-import torch
+
+from diffsynth.pipelines.qwen_image import FlowMatchScheduler, ModelConfig, QwenImagePipeline
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

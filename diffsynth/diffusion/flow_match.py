@@ -1,5 +1,7 @@
-import torch, math
-from typing_extensions import Literal
+import math
+from typing import Literal
+
+import torch
 
 
 class FlowMatchScheduler:

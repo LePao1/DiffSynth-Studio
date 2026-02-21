@@ -1,24 +1,24 @@
-import torch, math
-from PIL import Image
-from typing import Union
-from tqdm import tqdm
-from einops import rearrange
-import numpy as np
+import math
 from math import prod
 
+import numpy as np
+import torch
+from einops import rearrange
+from PIL import Image
+from tqdm import tqdm
+
+from ..core import ModelConfig, gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig, gradient_checkpoint_forward
-from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
-from ..utils.lora.merge import merge_lora
-
+from ..diffusion.base_pipeline import BasePipeline, ControlNetInput, PipelineUnit
+from ..models.dinov3_image_encoder import DINOv3ImageEncoder
+from ..models.qwen_image_controlnet import QwenImageBlockWiseControlNet
 from ..models.qwen_image_dit import QwenImageDiT
+from ..models.qwen_image_image2lora import QwenImageImage2LoRAModel
 from ..models.qwen_image_text_encoder import QwenImageTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
-from ..models.qwen_image_controlnet import QwenImageBlockWiseControlNet
 from ..models.siglip2_image_encoder import Siglip2ImageEncoder
-from ..models.dinov3_image_encoder import DINOv3ImageEncoder
-from ..models.qwen_image_image2lora import QwenImageImage2LoRAModel
+from ..utils.lora.merge import merge_lora
 
 
 class QwenImagePipeline(BasePipeline):
@@ -61,7 +61,7 @@ class QwenImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = None,
@@ -232,7 +232,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
             models = [models]
         self.models = torch.nn.ModuleList(models)
         for model in models:
-            if hasattr(model, "vram_management_enabled") and getattr(model, "vram_management_enabled"):
+            if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                 self.vram_management_enabled = True
 
     def preprocess(self, controlnet_inputs: list[ControlNetInput], conditionings: list[torch.Tensor], **kwargs):
@@ -320,9 +320,8 @@ class QwenImageUnit_InputImageEmbedder(PipelineUnit):
             input_latents = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents, "input_latents": input_latents}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents, "input_latents": input_latents}
 
 
 class QwenImageUnit_LayerInputImageEmbedder(PipelineUnit):
@@ -468,8 +467,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
             )
             prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
             return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
-        else:
-            return {}
+        return {}
 
 
 class QwenImageUnit_EntityControl(PipelineUnit):
@@ -515,8 +513,7 @@ class QwenImageUnit_EntityControl(PipelineUnit):
             )
             prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
             return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
-        else:
-            return {}
+        return {}
 
     def preprocess_masks(self, pipe, masks, height, width, dim):
         out_masks = []
