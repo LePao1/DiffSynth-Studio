@@ -1,7 +1,7 @@
 # DiffSynth-Studio Knowledge Base
 
 **Generated:** 2026-02-21
-**Commit:** bf22c52
+**Commit:** bdcaacf
 **Branch:** feat/refactor
 
 ## OVERVIEW
@@ -68,7 +68,7 @@ DiffSynth-Studio/
 ## COMMANDS
 
 ```bash
-# Install
+# Install (uv + hatchling backend)
 uv sync
 
 # Run example inference
@@ -83,6 +83,9 @@ cd docs/en && make html
 # Lint
 ruff check diffsynth/
 ruff format diffsynth/
+
+# Build package
+uv build
 ```
 
 ## ENVIRONMENT VARIABLES
