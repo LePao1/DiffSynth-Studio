@@ -28,7 +28,7 @@ def load_state_dict(file_path, torch_dtype=None, device="cpu", pin_memory=False,
 def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
     state_dict = {}
     with safe_open(file_path, framework="pt", device=str(device)) as f:
-        for k in f.keys():
+        for k in f.keys():  # noqa: SIM118 - safe_open is not a dict
             state_dict[k] = f.get_tensor(k)
             if torch_dtype is not None:
                 state_dict[k] = state_dict[k].to(torch_dtype)
@@ -86,7 +86,7 @@ def load_keys_dict(file_path):
 def load_keys_dict_from_safetensors(file_path):
     keys_dict = {}
     with safe_open(file_path, framework="pt", device="cpu") as f:
-        for k in f.keys():
+        for k in f.keys():  # noqa: SIM118 - safe_open is not a dict
             keys_dict[k] = f.get_slice(k).get_shape()
     return keys_dict
 
@@ -104,7 +104,7 @@ def convert_state_dict_to_keys_dict(state_dict):
 def load_keys_dict_from_bin(file_path):
     state_dict = load_state_dict_from_bin(file_path)
     keys_dict = convert_state_dict_to_keys_dict(state_dict)
-    return keys_dict
+    return keys_dict  # noqa: RET504 – readability
 
 
 def convert_keys_dict_to_single_str(state_dict, with_shape=True):
@@ -120,7 +120,7 @@ def convert_keys_dict_to_single_str(state_dict, with_shape=True):
                 keys.append(key)
     keys.sort()
     keys_str = ",".join(keys)
-    return keys_str
+    return keys_str  # noqa: RET504 – readability
 
 
 def hash_model_file(path, with_shape=True):

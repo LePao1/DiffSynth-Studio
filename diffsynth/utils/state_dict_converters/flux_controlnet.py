@@ -1,7 +1,7 @@
 import torch
 
 
-def FluxControlNetStateDictConverter(state_dict):
+def FluxControlNetStateDictConverter(state_dict):  # noqa: C901 – inherent complexity
     global_rename_dict = {
         "context_embedder": "context_embedder",
         "x_embedder": "x_embedder",

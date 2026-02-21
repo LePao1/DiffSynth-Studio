@@ -22,7 +22,7 @@ from ..utils.lora.merge import merge_lora
 
 
 class QwenImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -61,12 +61,14 @@ class QwenImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),  # noqa: B008 – public API default
         processor_config: ModelConfig = None,
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = QwenImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -237,7 +239,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
 
     def preprocess(self, controlnet_inputs: list[ControlNetInput], conditionings: list[torch.Tensor], **kwargs):
         processed_conditionings = []
-        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings):
+        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings, strict=False):
             conditioning = rearrange(conditioning, "B C (H P) (W Q) -> B (H W) (C P Q)", P=2, Q=2)
             model_output = self.models[controlnet_input.controlnet_id].process_controlnet_conditioning(conditioning)
             processed_conditionings.append(model_output)
@@ -254,7 +256,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
         **kwargs,
     ):
         res = 0
-        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings):
+        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings, strict=False):
             progress = (num_inference_steps - 1 - progress_id) / max(num_inference_steps - 1, 1)
             if progress > controlnet_input.start + (1e-4) or progress < controlnet_input.end - (1e-4):
                 continue
@@ -379,7 +381,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result
+        return split_result  # noqa: RET504 – readability
 
     def calculate_dimensions(self, target_area, ratio):
         width = math.sqrt(target_area * ratio)
@@ -410,7 +412,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states
+        return split_hidden_states  # noqa: RET504 – readability
 
     def encode_prompt_edit(self, pipe: QwenImagePipeline, prompt, edit_image):
         template = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n<|im_start|>assistant\n"
@@ -426,7 +428,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states
+        return split_hidden_states  # noqa: RET504 – readability
 
     def encode_prompt_edit_multi(self, pipe: QwenImagePipeline, prompt, edit_image):
         template = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
@@ -445,7 +447,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states
+        return split_hidden_states  # noqa: RET504 – readability
 
     def process(self, pipe: QwenImagePipeline, prompt, edit_image=None) -> dict:
         pipe.load_models_to_device(self.onload_model_names)
@@ -484,7 +486,7 @@ class QwenImageUnit_EntityControl(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result
+        return split_result  # noqa: RET504 – readability
 
     def get_prompt_emb(self, pipe: QwenImagePipeline, prompt) -> dict:
         if pipe.text_encoder is not None:
@@ -611,7 +613,7 @@ class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
         mask = mask.mean(dim=1, keepdim=True)
         mask = 1 - torch.nn.functional.interpolate(mask, size=latents.shape[-2:])
         latents = torch.concat([latents, mask], dim=1)
-        return latents
+        return latents  # noqa: RET504 – readability
 
     def apply_controlnet_mask_on_image(self, pipe, image, mask):
         mask = mask.resize(image.size)
@@ -619,7 +621,7 @@ class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
         image = np.array(image)
         image[mask > 0] = 0
         image = Image.fromarray(image)
-        return image
+        return image  # noqa: RET504 – readability
 
     def process(
         self,
@@ -710,7 +712,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result
+        return split_result  # noqa: RET504 – readability
 
     def encode_prompt_edit(self, pipe: QwenImagePipeline, prompt, edit_image):
         prompt = [prompt]
@@ -741,7 +743,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs
+        return embs  # noqa: RET504 – readability
 
     def encode_images_using_dinov3(self, pipe: QwenImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
@@ -750,7 +752,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs
+        return embs  # noqa: RET504 – readability
 
     def encode_images_using_qwenvl(self, pipe: QwenImagePipeline, images: list[Image.Image], highres=False):
         pipe.load_models_to_device(["text_encoder"])
@@ -759,7 +761,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image) if highres else self.processor_lowres(image)
             embs.append(self.encode_prompt_edit(pipe, prompt="", edit_image=image))
         embs = torch.stack(embs)
-        return embs
+        return embs  # noqa: RET504 – readability
 
     def encode_images(self, pipe: QwenImagePipeline, images: list[Image.Image]):
         if images is None:
@@ -802,11 +804,11 @@ class QwenImageUnit_Image2LoRADecode(PipelineUnit):
                 loras.append(pipe.image2lora_style(x=x, residual=None))
         if pipe.image2lora_coarse is not None:
             pipe.load_models_to_device(["image2lora_coarse"])
-            for x, residual in zip(image2lora_x, image2lora_residual):
+            for x, residual in zip(image2lora_x, image2lora_residual, strict=False):
                 loras.append(pipe.image2lora_coarse(x=x, residual=residual))
         if pipe.image2lora_fine is not None:
             pipe.load_models_to_device(["image2lora_fine"])
-            for x, residual in zip(image2lora_x, image2lora_residual_highres):
+            for x, residual in zip(image2lora_x, image2lora_residual_highres, strict=False):
                 loras.append(pipe.image2lora_fine(x=x, residual=residual))
         lora = merge_lora(loras, alpha=1 / len(image2lora_x))
         return {"lora": lora}
@@ -977,4 +979,4 @@ def model_fn_qwen_image(
     latents = rearrange(
         image, "B (N H W) (C P Q) -> (B N) C (H P) (W Q)", H=height // 16, W=width // 16, P=2, Q=2, B=1
     )
-    return latents
+    return latents  # noqa: RET504 – readability

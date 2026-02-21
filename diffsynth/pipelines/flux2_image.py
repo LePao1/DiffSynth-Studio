@@ -18,7 +18,7 @@ from ..models.z_image_text_encoder import ZImageTextEncoder
 
 
 class Flux2ImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -46,13 +46,15 @@ class Flux2ImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"
         ),
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = Flux2ImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -250,7 +252,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         batch_size, num_channels, seq_len, hidden_dim = out.shape
         prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
 
-        return prompt_embeds
+        return prompt_embeds  # noqa: RET504 – readability
 
     def prepare_text_ids(
         self,
@@ -264,9 +266,9 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
             t = torch.arange(1) if t_coord is None else t_coord[i]
             h = torch.arange(1)
             w = torch.arange(1)
-            l = torch.arange(L)
+            layer = torch.arange(L)
 
-            coords = torch.cartesian_prod(t, h, w, l)
+            coords = torch.cartesian_prod(t, h, w, layer)
             out_ids.append(coords)
 
         return torch.stack(out_ids)
@@ -385,7 +387,7 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
 
         batch_size, num_channels, seq_len, hidden_dim = out.shape
         prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
-        return prompt_embeds
+        return prompt_embeds  # noqa: RET504 – readability
 
     def prepare_text_ids(
         self,
@@ -399,9 +401,9 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
             t = torch.arange(1) if t_coord is None else t_coord[i]
             h = torch.arange(1)
             w = torch.arange(1)
-            l = torch.arange(L)
+            layer = torch.arange(L)
 
-            coords = torch.cartesian_prod(t, h, w, l)
+            coords = torch.cartesian_prod(t, h, w, layer)
             out_ids.append(coords)
 
         return torch.stack(out_ids)
@@ -513,7 +515,7 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
             interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
         )
         image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
-        return image
+        return image  # noqa: RET504 – readability
 
     def edit_image_auto_resize(self, edit_image):
         calculated_width, calculated_height = self.calculate_dimensions(
@@ -526,7 +528,7 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
         t_coords = [t.view(-1) for t in t_coords]
 
         image_latent_ids = []
-        for x, t in zip(image_latents, t_coords):
+        for x, t in zip(image_latents, t_coords, strict=False):
             x = x.squeeze(0)
             _, height, width = x.shape
 
@@ -536,7 +538,7 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
         image_latent_ids = torch.cat(image_latent_ids, dim=0)
         image_latent_ids = image_latent_ids.unsqueeze(0)
 
-        return image_latent_ids
+        return image_latent_ids  # noqa: RET504 – readability
 
     def process(self, pipe: Flux2ImagePipeline, edit_image, edit_image_auto_resize):
         if edit_image is None:
@@ -570,15 +572,15 @@ class Flux2Unit_ImageIDs(PipelineUnit):
         t = torch.arange(1)  # [0] - time dimension
         h = torch.arange(height)
         w = torch.arange(width)
-        l = torch.arange(1)  # [0] - layer dimension
+        layer = torch.arange(1)  # [0] - layer dimension
 
         # Create position IDs: (H*W, 4)
-        latent_ids = torch.cartesian_prod(t, h, w, l)
+        latent_ids = torch.cartesian_prod(t, h, w, layer)
 
         # Expand to batch: (B, H*W, 4)
         latent_ids = latent_ids.unsqueeze(0).expand(1, -1, -1)
 
-        return latent_ids
+        return latent_ids  # noqa: RET504 – readability
 
     def process(self, pipe: Flux2ImagePipeline, height, width):
         image_ids = self.prepare_latent_ids(height // 16, width // 16).to(pipe.device)
@@ -616,4 +618,4 @@ def model_fn_flux2(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     model_output = model_output[:, :image_seq_len]
-    return model_output
+    return model_output  # noqa: RET504 – readability

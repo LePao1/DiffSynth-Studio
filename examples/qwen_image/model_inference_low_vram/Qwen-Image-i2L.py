@@ -165,7 +165,7 @@ def generate_image(lora_path, prompt, seed):
     )
     pipe.load_lora(pipe.dit, lora_path)
     image = pipe(prompt, seed=seed, height=1024, width=1024, num_inference_steps=50)
-    return image
+    return image  # noqa: RET504 – readability
 
 
 demo_style()

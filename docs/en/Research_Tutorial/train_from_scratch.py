@@ -33,7 +33,7 @@ class AAAPositionalEmbedding(torch.nn.Module):
         text_emb = self.text_emb.to(device=text.device, dtype=text.dtype)
         text_emb = repeat(text_emb, "C -> B L C", B=text.shape[0], L=text.shape[1])
         emb = torch.concat([image_emb, text_emb], dim=1)
-        return emb
+        return emb  # noqa: RET504 – readability
 
 
 class AAABlock(torch.nn.Module):
@@ -67,18 +67,18 @@ class AAABlock(torch.nn.Module):
             dims={"n": self.num_heads},
         )
         emb = self.to_out(emb)
-        return emb
+        return emb  # noqa: RET504 – readability
 
     def feed_forward(self, emb, pos_emb):
         emb = self.norm_mlp(emb + pos_emb)
         emb = self.ff(emb)
-        return emb
+        return emb  # noqa: RET504 – readability
 
     def forward(self, emb, pos_emb, t_emb):
         gate_attn, gate_mlp = self.to_gate(t_emb).chunk(2, dim=-1)
         emb = emb + self.attention(emb, pos_emb) * (1 + gate_attn)
         emb = emb + self.feed_forward(emb, pos_emb) * (1 + gate_mlp)
-        return emb
+        return emb  # noqa: RET504 – readability
 
 
 class AAADiT(torch.nn.Module):
@@ -104,7 +104,7 @@ class AAADiT(torch.nn.Module):
         image = self.image_embedder(rearrange(latents, "B C H W -> B (H W) C"))
         text = self.text_embedder(prompt_embeds)
         emb = torch.concat([image, text], dim=1)
-        for block_id, block in enumerate(self.blocks):
+        for _block_id, block in enumerate(self.blocks):
             emb = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing=use_gradient_checkpointing,
@@ -116,7 +116,7 @@ class AAADiT(torch.nn.Module):
         emb = emb[:, : latents.shape[-1] * latents.shape[-2]]
         emb = self.proj_out(emb)
         emb = rearrange(emb, "B (H W) C -> B C H W", W=latents.shape[-1])
-        return emb
+        return emb  # noqa: RET504 – readability
 
 
 class AAAImagePipeline(BasePipeline):
@@ -144,10 +144,12 @@ class AAAImagePipeline(BasePipeline):
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str | torch.device = "cuda",
-        model_configs: list[ModelConfig] = [],
+        model_configs: list[ModelConfig] = None,
         tokenizer_config: ModelConfig = None,
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = AAAImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -312,7 +314,7 @@ def model_fn_aaa(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    return model_output
+    return model_output  # noqa: RET504 – readability
 
 
 class AAATrainingModule(DiffusionTrainingModule):
@@ -350,7 +352,7 @@ class AAATrainingModule(DiffusionTrainingModule):
                 unit, self.pipe, inputs_shared, inputs_posi, inputs_nega
             )
         loss = FlowMatchSFTLoss(self.pipe, **inputs_shared, **inputs_posi)
-        return loss
+        return loss  # noqa: RET504 – readability
 
 
 if __name__ == "__main__":

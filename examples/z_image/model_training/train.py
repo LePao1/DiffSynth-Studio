@@ -139,7 +139,7 @@ class ZImageTrainingModule(DiffusionTrainingModule):
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
         loss = self.task_to_loss[self.task](self.pipe, *inputs)
-        return loss
+        return loss  # noqa: RET504 – readability
 
 
 def z_image_parser():

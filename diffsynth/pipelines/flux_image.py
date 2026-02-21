@@ -44,7 +44,7 @@ class MultiControlNet(torch.nn.Module):
         **kwargs,
     ):
         res_stack, single_res_stack = None, None
-        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings):
+        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings, strict=False):
             progress = (num_inference_steps - 1 - progress_id) / max(num_inference_steps - 1, 1)
             if progress > controlnet_input.start or progress < controlnet_input.end:
                 continue
@@ -53,13 +53,13 @@ class MultiControlNet(torch.nn.Module):
                 res_stack = res_stack_
                 single_res_stack = single_res_stack_
             else:
-                res_stack = [i + j for i, j in zip(res_stack, res_stack_)]
-                single_res_stack = [i + j for i, j in zip(single_res_stack, single_res_stack_)]
+                res_stack = [i + j for i, j in zip(res_stack, res_stack_, strict=False)]
+                single_res_stack = [i + j for i, j in zip(single_res_stack, single_res_stack_, strict=False)]
         return res_stack, single_res_stack
 
 
 class FluxImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -123,22 +123,24 @@ class FluxImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
-        model_configs: list[ModelConfig] = [],
-        tokenizer_1_config: ModelConfig = ModelConfig(
+        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
+        model_configs: list[ModelConfig] = None,
+        tokenizer_1_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer/"
         ),
-        tokenizer_2_config: ModelConfig = ModelConfig(
+        tokenizer_2_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer_2/"
         ),
-        nexus_gen_processor_config: ModelConfig = ModelConfig(
+        nexus_gen_processor_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="processor/"
         ),
-        step1x_processor_config: ModelConfig = ModelConfig(
+        step1x_processor_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
             model_id="Qwen/Qwen2.5-VL-7B-Instruct", origin_file_pattern=""
         ),
         vram_limit: float = None,
     ):
+        if model_configs is None:
+            model_configs = []
         # Initialize pipeline
         pipe = FluxImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
@@ -409,7 +411,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
             truncation=True,
         ).input_ids.to(device)
         prompt_emb = text_encoder(input_ids)
-        return prompt_emb
+        return prompt_emb  # noqa: RET504 – readability
 
     def encode_prompt(
         self,
@@ -419,7 +421,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
         text_encoder_2,
         prompt,
         positive=True,
-        device=get_device_type(),
+        device=get_device_type(),  # noqa: B008 – public API default
         t5_sequence_length=512,
     ):
         pooled_prompt_emb = self.encode_prompt_using_clip(prompt, text_encoder_1, tokenizer_1, 77, device)
@@ -503,7 +505,7 @@ class FluxImageUnit_ControlNet(PipelineUnit):
         mask = mask.mean(dim=1, keepdim=True)
         mask = 1 - torch.nn.functional.interpolate(mask, size=latents.shape[-2:])
         latents = torch.concat([latents, mask], dim=1)
-        return latents
+        return latents  # noqa: RET504 – readability
 
     def apply_controlnet_mask_on_image(self, pipe, image, mask):
         mask = mask.resize(image.size)
@@ -511,7 +513,7 @@ class FluxImageUnit_ControlNet(PipelineUnit):
         image = np.array(image)
         image[mask > 0] = 0
         image = Image.fromarray(image)
-        return image
+        return image  # noqa: RET504 – readability
 
     def process(
         self, pipe: FluxImagePipeline, controlnet_inputs: list[ControlNetInput], tiled, tile_size, tile_stride
@@ -598,7 +600,7 @@ class FluxImageUnit_EntityControl(PipelineUnit):
             truncation=True,
         ).input_ids.to(device)
         prompt_emb = text_encoder(input_ids)
-        return prompt_emb
+        return prompt_emb  # noqa: RET504 – readability
 
     def encode_prompt(
         self,
@@ -608,7 +610,7 @@ class FluxImageUnit_EntityControl(PipelineUnit):
         text_encoder_2,
         prompt,
         positive=True,
-        device=get_device_type(),
+        device=get_device_type(),  # noqa: B008 – public API default
         t5_sequence_length=512,
     ):
         pooled_prompt_emb = self.encode_prompt_using_clip(prompt, text_encoder_1, tokenizer_1, 77, device)
@@ -756,7 +758,7 @@ class FluxImageUnit_NexusGen(PipelineUnit):
         ref_embed_text_ids = ref_embed_ids.to(device=latents.device, dtype=latents.dtype)
 
         text_ids = torch.cat([embed_text_ids, ref_embed_text_ids], dim=1)
-        return text_ids
+        return text_ids  # noqa: RET504 – readability
 
 
 class FluxImageUnit_Step1x(PipelineUnit):
@@ -928,7 +930,7 @@ class FluxImageUnit_ValueControl(PipelineUnit):
 
 
 class InfinitYou(torch.nn.Module):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
         super().__init__()
         from facexlib.recognition import init_recognition_model
         from insightface.app import FaceAnalysis
@@ -958,7 +960,7 @@ class InfinitYou(torch.nn.Module):
         if len(face_info) > 0:
             return face_info
         face_info = self.app_160.get(id_image_cv2)
-        return face_info
+        return face_info  # noqa: RET504 – readability
 
     def extract_arcface_bgr_embedding(self, in_image, landmark, device):
         from insightface.utils import face_align
@@ -968,7 +970,7 @@ class InfinitYou(torch.nn.Module):
         arc_face_image = 2 * arc_face_image - 1
         arc_face_image = arc_face_image.contiguous().to(device=device, dtype=self.torch_dtype)
         face_emb = self.arcface_model(arc_face_image)[0]  # [512], normalized
-        return face_emb
+        return face_emb  # noqa: RET504 – readability
 
     def prepare_infinite_you(self, model, id_image, infinityou_guidance, device):
         import cv2
@@ -1012,7 +1014,7 @@ class FluxImageUnit_LoRAEncode(PipelineUnit):
         loader = FluxLoRALoader(torch_dtype=dtype, device=device)
         lora = load_state_dict(lora_config.path, torch_dtype=dtype, device=device)
         lora = loader.convert_state_dict(lora)
-        return lora
+        return lora  # noqa: RET504 – readability
 
     def lora_embedding(self, pipe, lora_encoder_inputs):
         lora_emb = []
@@ -1020,7 +1022,7 @@ class FluxImageUnit_LoRAEncode(PipelineUnit):
             lora = self.load_lora(lora_config, pipe.torch_dtype, pipe.device)
             lora_emb.append(pipe.lora_encoder(lora))
         lora_emb = torch.concat(lora_emb, dim=1)
-        return lora_emb
+        return lora_emb  # noqa: RET504 – readability
 
     def add_to_text_embedding(self, prompt_emb, text_ids, lora_emb):
         prompt_emb = torch.concat([prompt_emb, lora_emb], dim=1)
@@ -1098,7 +1100,7 @@ class TeaCache:
 
     def update(self, hidden_states):
         hidden_states = hidden_states + self.previous_residual
-        return hidden_states
+        return hidden_states  # noqa: RET504 – readability
 
 
 class FastTileWorker:
@@ -1126,7 +1128,7 @@ class FastTileWorker:
         mask = mask.clip(1, border_width)
         mask = (mask / border_width).to(dtype=data.dtype, device=data.device)
         mask = rearrange(mask, "H W -> 1 H W")
-        return mask
+        return mask  # noqa: RET504 – readability
 
     def tiled_forward(
         self,
@@ -1171,7 +1173,7 @@ class FastTileWorker:
         return values
 
 
-def model_fn_flux_image(
+def model_fn_flux_image(  # noqa: C901 – inherent complexity
     dit: FluxDiT,
     controlnet=None,
     step1x_connector=None,
@@ -1191,7 +1193,7 @@ def model_fn_flux_image(
     tile_stride=64,
     entity_prompt_emb=None,
     entity_masks=None,
-    ipadapter_kwargs_list={},
+    ipadapter_kwargs_list=None,
     id_emb=None,
     infinityou_guidance=None,
     flex_condition=None,
@@ -1207,6 +1209,8 @@ def model_fn_flux_image(
     use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
+    if ipadapter_kwargs_list is None:
+        ipadapter_kwargs_list = {}
     if tiled:
 
         def flux_forward_fn(hl, hr, wl, wr):
@@ -1318,7 +1322,7 @@ def model_fn_flux_image(
         attention_mask = None
 
     # TeaCache
-    if tea_cache is not None:
+    if tea_cache is not None:  # noqa: SIM108 – readability
         tea_cache_update = tea_cache.check(dit, hidden_states, conditioning)
     else:
         tea_cache_update = False
@@ -1337,7 +1341,7 @@ def model_fn_flux_image(
                 conditioning,
                 image_rotary_emb,
                 attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None),
+                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id),
             )
             # ControlNet
             if controlnet is not None and controlnet_conditionings is not None and controlnet_res_stack is not None:
@@ -1361,7 +1365,7 @@ def model_fn_flux_image(
                 conditioning,
                 image_rotary_emb,
                 attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks, None),
+                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks),
             )
             # ControlNet
             if (
@@ -1396,4 +1400,4 @@ def model_fn_flux_image(
 
     hidden_states = dit.unpatchify(hidden_states, height, width)
 
-    return hidden_states
+    return hidden_states  # noqa: RET504 – readability

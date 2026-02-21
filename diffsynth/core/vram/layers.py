@@ -123,7 +123,7 @@ class AutoWrappedModule(AutoTorchModule):
             self.disk_offload = False
 
     def load_from_disk(self, torch_dtype, device, copy_module=False):
-        if copy_module:
+        if copy_module:  # noqa: SIM108 – readability
             module = copy.deepcopy(self.module)
         else:
             module = self.module
@@ -137,7 +137,7 @@ class AutoWrappedModule(AutoTorchModule):
         return module
 
     def offload_to_disk(self, model: torch.nn.Module):
-        for buf in model.buffers():
+        for _buf in model.buffers():
             # If there are some parameters are registed in buffers (not in state dict),
             # We cannot offload the model.
             for children in model.children():
@@ -238,7 +238,7 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             self.required_params = [name for name, _ in self.module.named_parameters(recurse=False)]
 
     def load_from_disk(self, torch_dtype, device, copy_module=False):
-        if copy_module:
+        if copy_module:  # noqa: SIM108 – readability
             module = copy.deepcopy(self.module)
         else:
             module = self.module
@@ -350,7 +350,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         )
         new_shape = origin_shape[:-1] + result.shape[-1:]
         result = result.reshape(new_shape)
-        return result
+        return result  # noqa: RET504 – readability
 
     def load_from_disk(self, torch_dtype, device, assign=True):
         weight = self.disk_map[self.name + ".weight"].to(dtype=torch_dtype, device=device)
@@ -407,7 +407,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         return weight, bias
 
     def linear_forward(self, x, weight, bias):
-        if self.enable_fp8:
+        if self.enable_fp8:  # noqa: SIM108 – readability
             out = self.fp8_linear(x, weight, bias)
         else:
             out = torch.nn.functional.linear(x, weight, bias)
@@ -415,11 +415,11 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
 
     def lora_forward(self, x, out):
         if self.lora_merger is None:
-            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
+            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights, strict=False):
                 out = out + x @ lora_A.T @ lora_B.T
         else:
             lora_output = []
-            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
+            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights, strict=False):
                 lora_output.append(x @ lora_A.T @ lora_B.T)
             lora_output = torch.stack(lora_output)
             out = self.lora_merger(out, lora_output)

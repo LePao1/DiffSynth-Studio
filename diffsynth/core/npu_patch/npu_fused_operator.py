@@ -1,11 +1,11 @@
+import contextlib
+
 import torch
 
 from ..device.npu_compatible_device import get_device_type
 
-try:
+with contextlib.suppress(Exception):
     import torch_npu
-except Exception:
-    pass
 
 
 def rms_norm_forward_npu(self, hidden_states):

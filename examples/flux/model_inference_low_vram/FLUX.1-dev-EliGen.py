@@ -53,7 +53,7 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
         font = ImageFont.load_default(font_size)
 
     # Overlay each mask onto the overlay image
-    for mask, mask_prompt, color in zip(masks, mask_prompts, colors):
+    for mask, mask_prompt, color in zip(masks, mask_prompts, colors, strict=False):
         # Convert mask to RGBA mode
         mask_rgba = mask.convert("RGBA")
         mask_data = mask_rgba.getdata()

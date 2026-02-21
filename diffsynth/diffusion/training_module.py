@@ -13,18 +13,18 @@ class DiffusionTrainingModule(torch.nn.Module):
         super().__init__()
 
     def to(self, *args, **kwargs):
-        for name, model in self.named_children():
+        for _name, model in self.named_children():
             model.to(*args, **kwargs)
         return self
 
     def trainable_modules(self):
         trainable_modules = filter(lambda p: p.requires_grad, self.parameters())
-        return trainable_modules
+        return trainable_modules  # noqa: RET504 – readability
 
     def trainable_param_names(self):
         trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.named_parameters()))
-        trainable_param_names = set([named_param[0] for named_param in trainable_param_names])
-        return trainable_param_names
+        trainable_param_names = {named_param[0] for named_param in trainable_param_names}
+        return trainable_param_names  # noqa: RET504 – readability
 
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
         if lora_alpha is None:
@@ -75,7 +75,7 @@ class DiffusionTrainingModule(torch.nn.Module):
             data = tuple(self.transfer_data_to_device(x, device, torch_float_dtype) for x in data)
             return data
         if isinstance(data, list):
-            data = list(self.transfer_data_to_device(x, device, torch_float_dtype) for x in data)
+            data = [self.transfer_data_to_device(x, device, torch_float_dtype) for x in data]
             return data
         if isinstance(data, dict):
             data = {i: self.transfer_data_to_device(data[i], device, torch_float_dtype) for i in data}

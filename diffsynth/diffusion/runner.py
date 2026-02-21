@@ -37,7 +37,7 @@ def launch_training_task(
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
-                if dataset.load_from_cache:
+                if dataset.load_from_cache:  # noqa: SIM108 – readability
                     loss = model({}, inputs=data)
                 else:
                     loss = model(data)
