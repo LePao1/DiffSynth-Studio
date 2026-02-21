@@ -1,5 +1,6 @@
-from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
 import torch
+
+from diffsynth.pipelines.z_image import ModelConfig, ZImagePipeline
 
 vram_config = {
     "offload_dtype": torch.bfloat16,

@@ -1,6 +1,7 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-from modelscope import snapshot_download
 import torch
+from modelscope import snapshot_download
+
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 snapshot_download(
     "DiffSynth-Studio/Qwen-Image-Distill-LoRA", local_dir="models/DiffSynth-Studio/Qwen-Image-Distill-LoRA"

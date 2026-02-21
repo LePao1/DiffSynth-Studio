@@ -1,8 +1,8 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
-from diffsynth.utils.controlnet import Annotator
 from modelscope import snapshot_download
 
+from diffsynth.pipelines.flux_image import ControlNetInput, FluxImagePipeline, ModelConfig
+from diffsynth.utils.controlnet import Annotator
 
 snapshot_download(
     "sd_lora/Annotators", allow_file_pattern="dpt_hybrid-midas-501f0c75.pt", local_dir="models/Annotators"

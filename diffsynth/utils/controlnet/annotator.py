@@ -1,4 +1,4 @@
-from typing_extensions import Literal, TypeAlias
+from typing import Literal, TypeAlias
 
 from diffsynth.core.device.npu_compatible_device import get_device_type
 

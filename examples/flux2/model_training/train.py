@@ -1,7 +1,21 @@
-import torch, os, argparse, accelerate
+import argparse
+import os
+
+import accelerate
+import torch
+
 from diffsynth.core import UnifiedDataset
+from diffsynth.diffusion import (
+    DiffusionTrainingModule,
+    DirectDistillLoss,
+    FlowMatchSFTLoss,
+    ModelLogger,
+    add_general_config,
+    add_image_size_config,
+    launch_data_process_task,
+    launch_training_task,
+)
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
-from diffsynth.diffusion import *
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -107,8 +121,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
-        loss = self.task_to_loss[self.task](self.pipe, *inputs)
-        return loss
+        return self.task_to_loss[self.task](self.pipe, *inputs)
 
 
 def flux2_parser():

@@ -1,10 +1,10 @@
-import re, os
+import os
+import re
 
 
 def read_file(path):
-    with open(path, "r", encoding="utf-8-sig") as f:
-        context = f.read()
-    return context
+    with open(path, encoding="utf-8-sig") as f:
+        return f.read()
 
 
 def get_files(files, path):

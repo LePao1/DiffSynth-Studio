@@ -1,6 +1,7 @@
 import importlib
-import torch
 from typing import Any
+
+import torch
 
 
 def is_torch_npu_available():
@@ -11,8 +12,6 @@ IS_CUDA_AVAILABLE = torch.cuda.is_available()
 IS_NPU_AVAILABLE = is_torch_npu_available() and torch.npu.is_available()
 
 if IS_NPU_AVAILABLE:
-    import torch_npu
-
     torch.npu.config.allow_internal_format = False
 
 
@@ -63,10 +62,9 @@ def get_nccl_backend() -> str:
     """Return distributed communication backend type based on device type."""
     if IS_CUDA_AVAILABLE:
         return "nccl"
-    elif IS_NPU_AVAILABLE:
+    if IS_NPU_AVAILABLE:
         return "hccl"
-    else:
-        raise RuntimeError(f"No available distributed communication backend found on device type {get_device_type()}.")
+    raise RuntimeError(f"No available distributed communication backend found on device type {get_device_type()}.")
 
 
 def enable_high_precision_for_bf16():
@@ -86,21 +84,19 @@ def parse_device_type(device):
     if isinstance(device, str):
         if device.startswith("cuda"):
             return "cuda"
-        elif device.startswith("npu"):
+        if device.startswith("npu"):
             return "npu"
-        else:
-            return "cpu"
-    elif isinstance(device, torch.device):
+        return "cpu"
+    if isinstance(device, torch.device):
         return device.type
 
 
 def parse_nccl_backend(device_type):
     if device_type == "cuda":
         return "nccl"
-    elif device_type == "npu":
+    if device_type == "npu":
         return "hccl"
-    else:
-        raise RuntimeError(f"No available distributed communication backend found on device type {device_type}.")
+    raise RuntimeError(f"No available distributed communication backend found on device type {device_type}.")
 
 
 def get_available_device_type():

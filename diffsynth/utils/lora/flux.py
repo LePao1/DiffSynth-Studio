@@ -1,5 +1,8 @@
+import math
+
+import torch
+
 from .general import GeneralLoRALoader
-import torch, math
 
 
 class FluxLoRALoader(GeneralLoRALoader):
@@ -100,10 +103,9 @@ class FluxLoRALoader(GeneralLoRALoader):
             for k in state_dict:
                 if "lora_unet_" in k:
                     return "civitai"
-                elif k.startswith("transformer."):
+                if k.startswith("transformer."):
                     return "diffusers"
-                else:
-                    None
+            return None
 
         model_resource = guess_resource(state_dict)
         if model_resource is None:
@@ -140,7 +142,7 @@ class FluxLoRALoader(GeneralLoRALoader):
         if model_resource == "diffusers":
             for name in list(state_dict_.keys()):
                 if "single_blocks." in name and ".a_to_q." in name:
-                    mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."), None)
+                    mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."))
                     if mlp is None:
                         dim = 4
                         if "lora_A" in name:

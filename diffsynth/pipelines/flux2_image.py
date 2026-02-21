@@ -1,19 +1,18 @@
-import torch, math, torchvision
-from PIL import Image
-from typing import Union
-from tqdm import tqdm
-from einops import rearrange
-import numpy as np
-from typing import Union, List, Optional, Tuple
+import math
 
+import torch
+import torchvision
+from einops import rearrange
+from PIL import Image
+from tqdm import tqdm
+from transformers import AutoProcessor, AutoTokenizer
+
+from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig, gradient_checkpoint_forward
-from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
-
-from transformers import AutoProcessor, AutoTokenizer
-from ..models.flux2_text_encoder import Flux2TextEncoder
+from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.flux2_dit import Flux2DiT
+from ..models.flux2_text_encoder import Flux2TextEncoder
 from ..models.flux2_vae import Flux2VAE
 from ..models.z_image_text_encoder import ZImageTextEncoder
 
@@ -47,7 +46,7 @@ class Flux2ImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(
             model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"
@@ -83,7 +82,7 @@ class Flux2ImagePipeline(BasePipeline):
         input_image: Image.Image = None,
         denoising_strength: float = 1.0,
         # Edit
-        edit_image: Union[Image.Image, List[Image.Image]] = None,
+        edit_image: Image.Image | list[Image.Image] = None,
         edit_image_auto_resize: bool = True,
         # Shape
         height: int = 1024,
@@ -182,7 +181,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         )
         self.system_message = "You are an AI that reasons about image descriptions. You give structured responses focusing on object relationships, object attribution and actions without speculation."
 
-    def format_text_input(self, prompts: List[str], system_message: str = None):
+    def format_text_input(self, prompts: list[str], system_message: str = None):
         # Remove [IMG] tokens from prompts to avoid Pixtral validation issues
         # when truncation is enabled. The processor counts [IMG] tokens and fails
         # if the count changes after truncation.
@@ -203,14 +202,14 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         self,
         text_encoder,
         tokenizer,
-        prompt: Union[str, List[str]],
-        dtype: Optional[torch.dtype] = None,
-        device: Optional[torch.device] = None,
+        prompt: str | list[str],
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
         max_sequence_length: int = 512,
         # fmt: off
         system_message: str = "You are an AI that reasons about image descriptions. You give structured responses focusing on object relationships, object attribution and actions without speculation.",
         # fmt: on
-        hidden_states_layers: List[int] = (10, 20, 30),
+        hidden_states_layers: list[int] = (10, 20, 30),
     ):
         dtype = text_encoder.dtype if dtype is None else dtype
         device = text_encoder.device if device is None else device
@@ -256,7 +255,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
     def prepare_text_ids(
         self,
         x: torch.Tensor,  # (B, L, D) or (L, D)
-        t_coord: Optional[torch.Tensor] = None,
+        t_coord: torch.Tensor | None = None,
     ):
         B, L, _ = x.shape
         out_ids = []
@@ -276,13 +275,13 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         self,
         text_encoder,
         tokenizer,
-        prompt: Union[str, List[str]],
+        prompt: str | list[str],
         dtype=None,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         num_images_per_prompt: int = 1,
-        prompt_embeds: Optional[torch.Tensor] = None,
+        prompt_embeds: torch.Tensor | None = None,
         max_sequence_length: int = 512,
-        text_encoder_out_layers: Tuple[int] = (10, 20, 30),
+        text_encoder_out_layers: tuple[int] = (10, 20, 30),
     ):
         prompt = [prompt] if isinstance(prompt, str) else prompt
 
@@ -337,9 +336,9 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
         self,
         text_encoder: ZImageTextEncoder,
         tokenizer: AutoTokenizer,
-        prompt: Union[str, List[str]],
-        dtype: Optional[torch.dtype] = None,
-        device: Optional[torch.device] = None,
+        prompt: str | list[str],
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
         max_sequence_length: int = 512,
     ):
         dtype = text_encoder.dtype if dtype is None else dtype
@@ -391,7 +390,7 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
     def prepare_text_ids(
         self,
         x: torch.Tensor,  # (B, L, D) or (L, D)
-        t_coord: Optional[torch.Tensor] = None,
+        t_coord: torch.Tensor | None = None,
     ):
         B, L, _ = x.shape
         out_ids = []
@@ -411,11 +410,11 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
         self,
         text_encoder: ZImageTextEncoder,
         tokenizer: AutoTokenizer,
-        prompt: Union[str, List[str]],
+        prompt: str | list[str],
         dtype=None,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         num_images_per_prompt: int = 1,
-        prompt_embeds: Optional[torch.Tensor] = None,
+        prompt_embeds: torch.Tensor | None = None,
         max_sequence_length: int = 512,
     ):
         prompt = [prompt] if isinstance(prompt, str) else prompt
@@ -486,9 +485,8 @@ class Flux2Unit_InputImageEmbedder(PipelineUnit):
         input_latents = rearrange(input_latents, "B C H W -> B (H W) C")
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents, "input_latents": input_latents}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents, "input_latents": input_latents}
 
 
 class Flux2Unit_EditImageEmbedder(PipelineUnit):
@@ -500,8 +498,6 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
         )
 
     def calculate_dimensions(self, target_area, ratio):
-        import math
-
         width = math.sqrt(target_area * ratio)
         height = width / ratio
         width = round(width / 32) * 32

@@ -1,18 +1,19 @@
 import torch
-from typing import Optional
 from einops import rearrange
 from yunchang.kernels import AttnType
+
 from xfuser.core.distributed import get_sequence_parallel_rank, get_sequence_parallel_world_size, get_sp_group
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
 
 from ... import IS_NPU_AVAILABLE
-from ...core.device import parse_nccl_backend, parse_device_type
+from ...core.device import parse_device_type, parse_nccl_backend
 from ...core.gradient import gradient_checkpoint_forward
 
 
 def initialize_usp(device_type):
     import torch.distributed as dist
-    from xfuser.core.distributed import initialize_model_parallel, init_distributed_environment
+
+    from xfuser.core.distributed import init_distributed_environment, initialize_model_parallel
 
     dist.init_process_group(backend=parse_nccl_backend(device_type), init_method="env://")
     init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
@@ -64,8 +65,8 @@ def usp_dit_forward(
     x: torch.Tensor,
     timestep: torch.Tensor,
     context: torch.Tensor,
-    clip_feature: Optional[torch.Tensor] = None,
-    y: Optional[torch.Tensor] = None,
+    clip_feature: torch.Tensor | None = None,
+    y: torch.Tensor | None = None,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,

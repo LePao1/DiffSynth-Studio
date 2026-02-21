@@ -1,7 +1,8 @@
 import importlib
-import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
+import torch
+
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 if importlib.util.find_spec("transformers") is None:
     raise ImportError(

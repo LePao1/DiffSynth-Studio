@@ -165,7 +165,7 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):
                 pass
     for name in list(state_dict_.keys()):
         if "single_blocks." in name and ".a_to_q." in name:
-            mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."), None)
+            mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."))
             if mlp is None:
                 mlp = torch.zeros(
                     4 * state_dict_[name].shape[0], *state_dict_[name].shape[1:], dtype=state_dict_[name].dtype

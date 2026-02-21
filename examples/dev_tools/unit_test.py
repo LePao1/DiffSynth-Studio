@@ -1,4 +1,7 @@
-import os, shutil, multiprocessing, time
+import multiprocessing
+import os
+import shutil
+import time
 
 NUM_GPUS = 7
 

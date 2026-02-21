@@ -1,7 +1,6 @@
-from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
-from PIL import Image
 import torch
 
+from diffsynth.pipelines.z_image import ModelConfig, ZImagePipeline
 
 pipe = ZImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

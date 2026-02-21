@@ -1,6 +1,6 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
 
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 vram_config = {
     "offload_dtype": "disk",
@@ -44,7 +44,7 @@ image = pipe(
     width=1024,
     edit_image_auto_resize=True,
 )
-image.save(f"image2.jpg")
+image.save("image2.jpg")
 
 # edit_image_auto_resize=False: do not resize input image
 image = pipe(
@@ -56,4 +56,4 @@ image = pipe(
     width=1024,
     edit_image_auto_resize=False,
 )
-image.save(f"image3.jpg")
+image.save("image3.jpg")

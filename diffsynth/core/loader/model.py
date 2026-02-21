@@ -1,11 +1,11 @@
-from ..vram.initialization import skip_model_initialization
-from ..vram.disk_map import DiskMap
-from ..vram.layers import enable_vram_management
-from .file import load_state_dict
 import torch
-from contextlib import contextmanager
 from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.utils import ContextManagers
+
+from ..vram.disk_map import DiskMap
+from ..vram.initialization import skip_model_initialization
+from ..vram.layers import enable_vram_management
+from .file import load_state_dict
 
 
 def load_model(
@@ -126,8 +126,8 @@ def load_model_with_disk_offload(
 
 def get_init_context(torch_dtype, device):
     if is_deepspeed_zero3_enabled():
-        from transformers.modeling_utils import set_zero3_state
         import deepspeed
+        from transformers.modeling_utils import set_zero3_state
 
         # Why do we use "deepspeed.zero.Init"?
         # Weight segmentation of the model can be performed on the CPU side

@@ -1,8 +1,11 @@
-import os, torch
-from tqdm import tqdm
+import os
+
+import torch
 from accelerate import Accelerator
-from .training_module import DiffusionTrainingModule
+from tqdm import tqdm
+
 from .logger import ModelLogger
+from .training_module import DiffusionTrainingModule
 
 
 def launch_training_task(
@@ -65,10 +68,9 @@ def launch_data_process_task(
     model, dataloader = accelerator.prepare(model, dataloader)
 
     for data_id, data in enumerate(tqdm(dataloader)):
-        with accelerator.accumulate(model):
-            with torch.no_grad():
-                folder = os.path.join(model_logger.output_path, str(accelerator.process_index))
-                os.makedirs(folder, exist_ok=True)
-                save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
-                data = model(data)
-                torch.save(data, save_path)
+        with accelerator.accumulate(model), torch.no_grad():
+            folder = os.path.join(model_logger.output_path, str(accelerator.process_index))
+            os.makedirs(folder, exist_ok=True)
+            save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
+            data = model(data)
+            torch.save(data, save_path)

@@ -1,7 +1,8 @@
 import torch
 from PIL import Image
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+
 from diffsynth import load_state_dict
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

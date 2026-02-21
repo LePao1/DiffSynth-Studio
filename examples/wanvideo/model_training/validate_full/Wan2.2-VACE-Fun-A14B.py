@@ -1,9 +1,8 @@
 import torch
-from PIL import Image
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.core import load_state_dict
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 
+from diffsynth.core import load_state_dict
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import VideoData, save_video
 
 vram_config = {
     "offload_dtype": torch.bfloat16,

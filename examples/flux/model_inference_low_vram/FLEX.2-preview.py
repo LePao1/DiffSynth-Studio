@@ -1,9 +1,9 @@
-import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
-from diffsynth.utils.controlnet import Annotator
 import numpy as np
+import torch
 from PIL import Image
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
+from diffsynth.utils.controlnet import Annotator
 
 vram_config = {
     "offload_dtype": torch.float8_e4m3fn,

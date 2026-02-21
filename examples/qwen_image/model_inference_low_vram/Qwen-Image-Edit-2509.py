@@ -1,7 +1,7 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-from PIL import Image
 import torch
+from PIL import Image
 
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 
 vram_config = {
     "offload_dtype": "disk",

@@ -1,32 +1,26 @@
-import torch, types
 import numpy as np
-from PIL import Image
-from einops import repeat
-from typing import Optional, Union
-from einops import rearrange
-import numpy as np
+import torch
+from einops import rearrange, repeat
 from PIL import Image
 from tqdm import tqdm
-from typing import Optional
 from transformers import AutoImageProcessor, Gemma3Processor
 
+from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-
-from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
-from ..models.ltx2_dit import LTXModel
-from ..models.ltx2_video_vae import LTX2VideoEncoder, LTX2VideoDecoder, VideoLatentPatchifier
-from ..models.ltx2_audio_vae import LTX2AudioEncoder, LTX2AudioDecoder, LTX2Vocoder, AudioPatchifier
-from ..models.ltx2_upsampler import LTX2LatentUpsampler
+from ..models.ltx2_audio_vae import AudioPatchifier, LTX2AudioDecoder, LTX2AudioEncoder, LTX2Vocoder
 from ..models.ltx2_common import (
-    VideoLatentShape,
+    VIDEO_SCALE_FACTORS,
     AudioLatentShape,
+    VideoLatentShape,
     VideoPixelShape,
     get_pixel_coords,
-    VIDEO_SCALE_FACTORS,
 )
+from ..models.ltx2_dit import LTXModel
+from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
+from ..models.ltx2_upsampler import LTX2LatentUpsampler
+from ..models.ltx2_video_vae import LTX2VideoDecoder, LTX2VideoEncoder, VideoLatentPatchifier
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
 
 
@@ -70,10 +64,10 @@ class LTX2AudioVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
-        stage2_lora_config: Optional[ModelConfig] = None,
+        stage2_lora_config: ModelConfig | None = None,
         vram_limit: float = None,
     ):
         # Initialize pipeline
@@ -178,33 +172,33 @@ class LTX2AudioVideoPipeline(BasePipeline):
         self,
         # Prompt
         prompt: str,
-        negative_prompt: Optional[str] = "",
+        negative_prompt: str | None = "",
         # Image-to-video
         denoising_strength: float = 1.0,
-        input_images: Optional[list[Image.Image]] = None,
-        input_images_indexes: Optional[list[int]] = None,
-        input_images_strength: Optional[float] = 1.0,
+        input_images: list[Image.Image] | None = None,
+        input_images_indexes: list[int] | None = None,
+        input_images_strength: float | None = 1.0,
         # Randomness
-        seed: Optional[int] = None,
-        rand_device: Optional[str] = "cpu",
+        seed: int | None = None,
+        rand_device: str | None = "cpu",
         # Shape
-        height: Optional[int] = 512,
-        width: Optional[int] = 768,
+        height: int | None = 512,
+        width: int | None = 768,
         num_frames=121,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 3.0,
-        cfg_merge: Optional[bool] = False,
+        cfg_scale: float | None = 3.0,
+        cfg_merge: bool | None = False,
         # Scheduler
-        num_inference_steps: Optional[int] = 40,
+        num_inference_steps: int | None = 40,
         # VAE tiling
-        tiled: Optional[bool] = True,
-        tile_size_in_pixels: Optional[int] = 512,
-        tile_overlap_in_pixels: Optional[int] = 128,
-        tile_size_in_frames: Optional[int] = 128,
-        tile_overlap_in_frames: Optional[int] = 24,
+        tiled: bool | None = True,
+        tile_size_in_pixels: int | None = 512,
+        tile_overlap_in_pixels: int | None = 128,
+        tile_size_in_frames: int | None = 128,
+        tile_overlap_in_frames: int | None = 24,
         # Special Pipelines
-        use_two_stage_pipeline: Optional[bool] = False,
-        use_distilled_pipeline: Optional[bool] = False,
+        use_two_stage_pipeline: bool | None = False,
+        use_distilled_pipeline: bool | None = False,
         # progress_bar
         progress_bar_cmd=tqdm,
     ):
@@ -326,7 +320,7 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
             inputs_shared["use_two_stage_pipeline"] = True
             inputs_shared["cfg_scale"] = 1.0
             print(
-                f"Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0."
+                "Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0."
             )
         if inputs_shared.get("use_two_stage_pipeline", False):
             # distill pipeline also uses two-stage, but it does not needs lora
@@ -549,8 +543,7 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
             initial_dict = stage1_dict
             initial_dict.update({"stage2_" + k: v for k, v in stage2_dict.items()})
             return initial_dict
-        else:
-            return self.process_stage(pipe, height, width, num_frames, seed, rand_device, frame_rate)
+        return self.process_stage(pipe, height, width, num_frames, seed, rand_device, frame_rate)
 
 
 class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):
@@ -566,9 +559,8 @@ class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):
     ):
         if input_video is None:
             return {"video_latents": video_noise, "audio_latents": audio_noise}
-        else:
-            # TODO: implement video-to-video
-            raise NotImplementedError("Video-to-video not implemented yet.")
+        # TODO: implement video-to-video
+        raise NotImplementedError("Video-to-video not implemented yet.")
 
 
 class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
@@ -595,7 +587,7 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         image = ltx2_preprocess(np.array(input_image.resize((width, height))))
         image = torch.Tensor(np.array(image, dtype=np.float32)).to(dtype=pipe.torch_dtype, device=pipe.device)
         image = image / 127.5 - 1.0
-        image = repeat(image, f"H W C -> B C F H W", B=1, F=1)
+        image = repeat(image, "H W C -> B C F H W", B=1, F=1)
         latent = pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(
             pipe.device
         )
@@ -618,34 +610,33 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
     ):
         if input_images is None or len(input_images) == 0:
             return {"video_latents": video_latents}
-        else:
-            pipe.load_models_to_device(self.onload_model_names)
-            output_dicts = {}
-            stage1_height = height // 2 if use_two_stage_pipeline else height
-            stage1_width = width // 2 if use_two_stage_pipeline else width
-            stage1_latents = [
-                self.get_image_latent(
-                    pipe, img, stage1_height, stage1_width, tiled, tile_size_in_pixels, tile_overlap_in_pixels
-                )
+        pipe.load_models_to_device(self.onload_model_names)
+        output_dicts = {}
+        stage1_height = height // 2 if use_two_stage_pipeline else height
+        stage1_width = width // 2 if use_two_stage_pipeline else width
+        stage1_latents = [
+            self.get_image_latent(
+                pipe, img, stage1_height, stage1_width, tiled, tile_size_in_pixels, tile_overlap_in_pixels
+            )
+            for img in input_images
+        ]
+        video_latents, denoise_mask_video, initial_latents = pipe.apply_input_images_to_latents(
+            video_latents, stage1_latents, input_images_indexes, input_images_strength, num_frames=num_frames
+        )
+        output_dicts.update(
+            {
+                "video_latents": video_latents,
+                "denoise_mask_video": denoise_mask_video,
+                "input_latents_video": initial_latents,
+            }
+        )
+        if use_two_stage_pipeline:
+            stage2_latents = [
+                self.get_image_latent(pipe, img, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels)
                 for img in input_images
             ]
-            video_latents, denoise_mask_video, initial_latents = pipe.apply_input_images_to_latents(
-                video_latents, stage1_latents, input_images_indexes, input_images_strength, num_frames=num_frames
-            )
-            output_dicts.update(
-                {
-                    "video_latents": video_latents,
-                    "denoise_mask_video": denoise_mask_video,
-                    "input_latents_video": initial_latents,
-                }
-            )
-            if use_two_stage_pipeline:
-                stage2_latents = [
-                    self.get_image_latent(pipe, img, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels)
-                    for img in input_images
-                ]
-                output_dicts.update({"stage2_input_latents": stage2_latents})
-            return output_dicts
+            output_dicts.update({"stage2_input_latents": stage2_latents})
+        return output_dicts
 
 
 def model_fn_ltx2(

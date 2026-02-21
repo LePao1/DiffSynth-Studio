@@ -1,9 +1,10 @@
 import torch
+
 from ..device.npu_compatible_device import get_device_type
 
 try:
     import torch_npu
-except:
+except Exception:
     pass
 
 

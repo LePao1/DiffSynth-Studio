@@ -1,6 +1,6 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
 
+from diffsynth.pipelines.flux_image import ControlNetInput, FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

@@ -1,8 +1,8 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
-from diffsynth.utils.controlnet import Annotator
 from modelscope import snapshot_download
 
+from diffsynth.pipelines.flux_image import ControlNetInput, FluxImagePipeline, ModelConfig
+from diffsynth.utils.controlnet import Annotator
 
 vram_config = {
     "offload_dtype": torch.float8_e4m3fn,

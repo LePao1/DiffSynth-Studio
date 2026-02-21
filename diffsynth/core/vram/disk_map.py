@@ -1,5 +1,7 @@
+import os
+
+import torch
 from safetensors import safe_open
-import torch, os
 
 
 class SafetensorsCompatibleTensor:
@@ -85,11 +87,9 @@ class DiskMap:
     def __iter__(self):
         if self.rename_dict is not None:
             return self.rename_dict.__iter__()
-        else:
-            return self.name_map.__iter__()
+        return self.name_map.__iter__()
 
     def __contains__(self, x):
         if self.rename_dict is not None:
             return x in self.rename_dict
-        else:
-            return x in self.name_map
+        return x in self.name_map

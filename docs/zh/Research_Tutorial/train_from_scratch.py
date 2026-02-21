@@ -1,22 +1,22 @@
-import torch, accelerate
-from PIL import Image
-from typing import Union
-from tqdm import tqdm
+import accelerate
+import torch
 from einops import rearrange, repeat
-
+from PIL import Image
+from tqdm import tqdm
 from transformers import AutoProcessor, AutoTokenizer
-from diffsynth.core import ModelConfig, gradient_checkpoint_forward, attention_forward, UnifiedDataset, load_model
+
+from diffsynth.core import ModelConfig, UnifiedDataset, attention_forward, gradient_checkpoint_forward
 from diffsynth.diffusion import (
-    FlowMatchScheduler,
     DiffusionTrainingModule,
+    FlowMatchScheduler,
     FlowMatchSFTLoss,
     ModelLogger,
     launch_training_task,
 )
 from diffsynth.diffusion.base_pipeline import BasePipeline, PipelineUnit
+from diffsynth.models.flux2_vae import Flux2VAE
 from diffsynth.models.general_modules import TimestepEmbeddings
 from diffsynth.models.z_image_text_encoder import ZImageTextEncoder
-from diffsynth.models.flux2_vae import Flux2VAE
 
 
 class AAAPositionalEmbedding(torch.nn.Module):
@@ -143,7 +143,7 @@ class AAAImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = "cuda",
+        device: str | torch.device = "cuda",
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = None,
         vram_limit: float = None,
@@ -292,9 +292,8 @@ class AAAUnit_InputImageEmbedder(PipelineUnit):
         input_latents = pipe.vae.encode(image)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents, "input_latents": input_latents}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents, "input_latents": input_latents}
 
 
 def model_fn_aaa(

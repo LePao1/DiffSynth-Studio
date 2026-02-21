@@ -1,32 +1,28 @@
-import torch, types
+import types
+from typing import Literal
+
 import numpy as np
-from PIL import Image
-from einops import repeat
-from typing import Optional, Union
-from einops import rearrange
-import numpy as np
+import torch
+from einops import rearrange, repeat
 from PIL import Image
 from tqdm import tqdm
-from typing import Optional
-from typing_extensions import Literal
 from transformers import Wav2Vec2Processor
 
+from ..core import ModelConfig, gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-
+from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
+from ..models.wan_video_animate_adapter import WanAnimateAdapter
 from ..models.wan_video_dit import WanModel, sinusoidal_embedding_1d
 from ..models.wan_video_dit_s2v import rope_precompute
-from ..models.wan_video_text_encoder import WanTextEncoder, HuggingfaceTokenizer
-from ..models.wan_video_vae import WanVideoVAE
 from ..models.wan_video_image_encoder import WanImageEncoder
-from ..models.wan_video_vace import VaceWanModel
-from ..models.wan_video_motion_controller import WanMotionControllerModel
-from ..models.wan_video_animate_adapter import WanAnimateAdapter
 from ..models.wan_video_mot import MotWanModel
+from ..models.wan_video_motion_controller import WanMotionControllerModel
+from ..models.wan_video_text_encoder import HuggingfaceTokenizer, WanTextEncoder
+from ..models.wan_video_vace import VaceWanModel
+from ..models.wan_video_vae import WanVideoVAE
 from ..models.wav2vec import WanS2VAudioEncoder
-from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
 
 
 class WanVideoPipeline(BasePipeline):
@@ -100,7 +96,7 @@ class WanVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = get_device_type(),
+        device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(
             model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"
@@ -142,6 +138,7 @@ class WanVideoPipeline(BasePipeline):
 
             initialize_usp(device)
             import torch.distributed as dist
+
             from ..core.device.npu_compatible_device import get_device_name
 
             if dist.is_available() and dist.is_initialized():
@@ -195,30 +192,29 @@ class WanVideoPipeline(BasePipeline):
         self,
         # Prompt
         prompt: str,
-        negative_prompt: Optional[str] = "",
+        negative_prompt: str | None = "",
         # Image-to-video
-        input_image: Optional[Image.Image] = None,
+        input_image: Image.Image | None = None,
         # First-last-frame-to-video
-        end_image: Optional[Image.Image] = None,
+        end_image: Image.Image | None = None,
         # Video-to-video
-        input_video: Optional[list[Image.Image]] = None,
-        denoising_strength: Optional[float] = 1.0,
+        input_video: list[Image.Image] | None = None,
+        denoising_strength: float | None = 1.0,
         # Speech-to-video
-        input_audio: Optional[np.array] = None,
-        audio_embeds: Optional[torch.Tensor] = None,
-        audio_sample_rate: Optional[int] = 16000,
-        s2v_pose_video: Optional[list[Image.Image]] = None,
-        s2v_pose_latents: Optional[torch.Tensor] = None,
-        motion_video: Optional[list[Image.Image]] = None,
+        input_audio: np.array | None = None,
+        audio_embeds: torch.Tensor | None = None,
+        audio_sample_rate: int | None = 16000,
+        s2v_pose_video: list[Image.Image] | None = None,
+        s2v_pose_latents: torch.Tensor | None = None,
+        motion_video: list[Image.Image] | None = None,
         # ControlNet
-        control_video: Optional[list[Image.Image]] = None,
-        reference_image: Optional[Image.Image] = None,
+        control_video: list[Image.Image] | None = None,
+        reference_image: Image.Image | None = None,
         # Camera control
-        camera_control_direction: Optional[
-            Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown"]
-        ] = None,
-        camera_control_speed: Optional[float] = 1 / 54,
-        camera_control_origin: Optional[tuple] = (
+        camera_control_direction: Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown"]
+        | None = None,
+        camera_control_speed: float | None = 1 / 54,
+        camera_control_origin: tuple | None = (
             0,
             0.532139961,
             0.946026558,
@@ -240,51 +236,51 @@ class WanVideoPipeline(BasePipeline):
             0,
         ),
         # VACE
-        vace_video: Optional[list[Image.Image]] = None,
-        vace_video_mask: Optional[Image.Image] = None,
-        vace_reference_image: Optional[Image.Image] = None,
-        vace_scale: Optional[float] = 1.0,
+        vace_video: list[Image.Image] | None = None,
+        vace_video_mask: Image.Image | None = None,
+        vace_reference_image: Image.Image | None = None,
+        vace_scale: float | None = 1.0,
         # Animate
-        animate_pose_video: Optional[list[Image.Image]] = None,
-        animate_face_video: Optional[list[Image.Image]] = None,
-        animate_inpaint_video: Optional[list[Image.Image]] = None,
-        animate_mask_video: Optional[list[Image.Image]] = None,
+        animate_pose_video: list[Image.Image] | None = None,
+        animate_face_video: list[Image.Image] | None = None,
+        animate_inpaint_video: list[Image.Image] | None = None,
+        animate_mask_video: list[Image.Image] | None = None,
         # VAP
-        vap_video: Optional[list[Image.Image]] = None,
-        vap_prompt: Optional[str] = " ",
-        negative_vap_prompt: Optional[str] = " ",
+        vap_video: list[Image.Image] | None = None,
+        vap_prompt: str | None = " ",
+        negative_vap_prompt: str | None = " ",
         # Randomness
-        seed: Optional[int] = None,
-        rand_device: Optional[str] = "cpu",
+        seed: int | None = None,
+        rand_device: str | None = "cpu",
         # Shape
-        height: Optional[int] = 480,
-        width: Optional[int] = 832,
+        height: int | None = 480,
+        width: int | None = 832,
         num_frames=81,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 5.0,
-        cfg_merge: Optional[bool] = False,
+        cfg_scale: float | None = 5.0,
+        cfg_merge: bool | None = False,
         # Boundary
-        switch_DiT_boundary: Optional[float] = 0.875,
+        switch_DiT_boundary: float | None = 0.875,
         # Scheduler
-        num_inference_steps: Optional[int] = 50,
-        sigma_shift: Optional[float] = 5.0,
+        num_inference_steps: int | None = 50,
+        sigma_shift: float | None = 5.0,
         # Speed control
-        motion_bucket_id: Optional[int] = None,
+        motion_bucket_id: int | None = None,
         # LongCat-Video
-        longcat_video: Optional[list[Image.Image]] = None,
+        longcat_video: list[Image.Image] | None = None,
         # VAE tiling
-        tiled: Optional[bool] = True,
-        tile_size: Optional[tuple[int, int]] = (30, 52),
-        tile_stride: Optional[tuple[int, int]] = (15, 26),
+        tiled: bool | None = True,
+        tile_size: tuple[int, int] | None = (30, 52),
+        tile_stride: tuple[int, int] | None = (15, 26),
         # Sliding window
-        sliding_window_size: Optional[int] = None,
-        sliding_window_stride: Optional[int] = None,
+        sliding_window_size: int | None = None,
+        sliding_window_stride: int | None = None,
         # Teacache
-        tea_cache_l1_thresh: Optional[float] = None,
-        tea_cache_model_id: Optional[str] = "",
+        tea_cache_l1_thresh: float | None = None,
+        tea_cache_model_id: str | None = "",
         # progress_bar
         progress_bar_cmd=tqdm,
-        output_type: Optional[Literal["quantized", "floatpoint"]] = "quantized",
+        output_type: Literal["quantized", "floatpoint"] | None = "quantized",
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -358,7 +354,7 @@ class WanVideoPipeline(BasePipeline):
             if (
                 timestep.item() < switch_DiT_boundary * 1000
                 and self.dit2 is not None
-                and not models["dit"] is self.dit2
+                and models["dit"] is not self.dit2
             ):
                 self.load_models_to_device(self.in_iteration_models_2)
                 models["dit"] = self.dit2
@@ -471,9 +467,8 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents}
+        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+        return {"latents": latents}
 
 
 class WanVideoUnit_PromptEmbedder(PipelineUnit):
@@ -871,8 +866,7 @@ class WanVideoUnit_VACE(PipelineUnit):
 
             vace_context = torch.concat((vace_video_latents, vace_mask_latents), dim=1)
             return {"vace_context": vace_context, "vace_scale": vace_scale}
-        else:
-            return {"vace_context": None, "vace_scale": vace_scale}
+        return {"vace_context": None, "vace_scale": vace_scale}
 
 
 class WanVideoUnit_VAP(PipelineUnit):
@@ -908,90 +902,85 @@ class WanVideoUnit_VAP(PipelineUnit):
     def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
         if inputs_shared.get("vap_video") is None:
             return inputs_shared, inputs_posi, inputs_nega
+        # 1. encode vap prompt
+        pipe.load_models_to_device(["text_encoder"])
+        vap_prompt, negative_vap_prompt = inputs_posi.get("vap_prompt", ""), inputs_nega.get("negative_vap_prompt", "")
+        vap_prompt_emb = self.encode_prompt(pipe, vap_prompt)
+        negative_vap_prompt_emb = self.encode_prompt(pipe, negative_vap_prompt)
+        inputs_posi.update({"context_vap": vap_prompt_emb})
+        inputs_nega.update({"context_vap": negative_vap_prompt_emb})
+        # 2. prepare vap image clip embedding
+        pipe.load_models_to_device(["vae", "image_encoder"])
+        vap_video, end_image = inputs_shared.get("vap_video"), inputs_shared.get("end_image")
+
+        num_frames, height, width = (
+            inputs_shared.get("num_frames"),
+            inputs_shared.get("height"),
+            inputs_shared.get("width"),
+        )
+
+        image_vap = pipe.preprocess_image(vap_video[0].resize((width, height))).to(pipe.device)
+
+        vap_clip_context = pipe.image_encoder.encode_image([image_vap])
+        if end_image is not None:
+            vap_end_image = pipe.preprocess_image(vap_video[-1].resize((width, height))).to(pipe.device)
+            if pipe.dit.has_image_pos_emb:
+                vap_clip_context = torch.concat(
+                    [vap_clip_context, pipe.image_encoder.encode_image([vap_end_image])], dim=1
+                )
+        vap_clip_context = vap_clip_context.to(dtype=pipe.torch_dtype, device=pipe.device)
+        inputs_shared.update({"vap_clip_feature": vap_clip_context})
+
+        # 3. prepare vap latents
+        msk = torch.ones(1, num_frames, height // 8, width // 8, device=pipe.device)
+        msk[:, 1:] = 0
+        if end_image is not None:
+            msk[:, -1:] = 1
+            last_image_vap = pipe.preprocess_image(vap_video[-1].resize((width, height))).to(pipe.device)
+            vae_input = torch.concat(
+                [
+                    image_vap.transpose(0, 1),
+                    torch.zeros(3, num_frames - 2, height, width).to(image_vap.device),
+                    last_image_vap.transpose(0, 1),
+                ],
+                dim=1,
+            )
         else:
-            # 1. encode vap prompt
-            pipe.load_models_to_device(["text_encoder"])
-            vap_prompt, negative_vap_prompt = (
-                inputs_posi.get("vap_prompt", ""),
-                inputs_nega.get("negative_vap_prompt", ""),
-            )
-            vap_prompt_emb = self.encode_prompt(pipe, vap_prompt)
-            negative_vap_prompt_emb = self.encode_prompt(pipe, negative_vap_prompt)
-            inputs_posi.update({"context_vap": vap_prompt_emb})
-            inputs_nega.update({"context_vap": negative_vap_prompt_emb})
-            # 2. prepare vap image clip embedding
-            pipe.load_models_to_device(["vae", "image_encoder"])
-            vap_video, end_image = inputs_shared.get("vap_video"), inputs_shared.get("end_image")
-
-            num_frames, height, width = (
-                inputs_shared.get("num_frames"),
-                inputs_shared.get("height"),
-                inputs_shared.get("width"),
+            vae_input = torch.concat(
+                [image_vap.transpose(0, 1), torch.zeros(3, num_frames - 1, height, width).to(image_vap.device)], dim=1
             )
 
-            image_vap = pipe.preprocess_image(vap_video[0].resize((width, height))).to(pipe.device)
+        msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
+        msk = msk.view(1, msk.shape[1] // 4, 4, height // 8, width // 8)
+        msk = msk.transpose(1, 2)[0]
 
-            vap_clip_context = pipe.image_encoder.encode_image([image_vap])
-            if end_image is not None:
-                vap_end_image = pipe.preprocess_image(vap_video[-1].resize((width, height))).to(pipe.device)
-                if pipe.dit.has_image_pos_emb:
-                    vap_clip_context = torch.concat(
-                        [vap_clip_context, pipe.image_encoder.encode_image([vap_end_image])], dim=1
-                    )
-            vap_clip_context = vap_clip_context.to(dtype=pipe.torch_dtype, device=pipe.device)
-            inputs_shared.update({"vap_clip_feature": vap_clip_context})
+        tiled, tile_size, tile_stride = (
+            inputs_shared.get("tiled"),
+            inputs_shared.get("tile_size"),
+            inputs_shared.get("tile_stride"),
+        )
 
-            # 3. prepare vap latents
-            msk = torch.ones(1, num_frames, height // 8, width // 8, device=pipe.device)
-            msk[:, 1:] = 0
-            if end_image is not None:
-                msk[:, -1:] = 1
-                last_image_vap = pipe.preprocess_image(vap_video[-1].resize((width, height))).to(pipe.device)
-                vae_input = torch.concat(
-                    [
-                        image_vap.transpose(0, 1),
-                        torch.zeros(3, num_frames - 2, height, width).to(image_vap.device),
-                        last_image_vap.transpose(0, 1),
-                    ],
-                    dim=1,
-                )
-            else:
-                vae_input = torch.concat(
-                    [image_vap.transpose(0, 1), torch.zeros(3, num_frames - 1, height, width).to(image_vap.device)],
-                    dim=1,
-                )
+        y = pipe.vae.encode(
+            [vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)],
+            device=pipe.device,
+            tiled=tiled,
+            tile_size=tile_size,
+            tile_stride=tile_stride,
+        )[0]
+        y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
+        y = torch.concat([msk, y])
+        y = y.unsqueeze(0)
+        y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
 
-            msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
-            msk = msk.view(1, msk.shape[1] // 4, 4, height // 8, width // 8)
-            msk = msk.transpose(1, 2)[0]
+        vap_video = pipe.preprocess_video(vap_video)
+        vap_latent = pipe.vae.encode(
+            vap_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+        ).to(dtype=pipe.torch_dtype, device=pipe.device)
 
-            tiled, tile_size, tile_stride = (
-                inputs_shared.get("tiled"),
-                inputs_shared.get("tile_size"),
-                inputs_shared.get("tile_stride"),
-            )
+        vap_latent = torch.concat([vap_latent, y], dim=1).to(dtype=pipe.torch_dtype, device=pipe.device)
+        inputs_shared.update({"vap_hidden_state": vap_latent})
 
-            y = pipe.vae.encode(
-                [vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)],
-                device=pipe.device,
-                tiled=tiled,
-                tile_size=tile_size,
-                tile_stride=tile_stride,
-            )[0]
-            y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
-            y = torch.concat([msk, y])
-            y = y.unsqueeze(0)
-            y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
-
-            vap_video = pipe.preprocess_video(vap_video)
-            vap_latent = pipe.vae.encode(
-                vap_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
-            ).to(dtype=pipe.torch_dtype, device=pipe.device)
-
-            vap_latent = torch.concat([vap_latent, y], dim=1).to(dtype=pipe.torch_dtype, device=pipe.device)
-            inputs_shared.update({"vap_hidden_state": vap_latent})
-
-            return inputs_shared, inputs_posi, inputs_nega
+        return inputs_shared, inputs_posi, inputs_nega
 
 
 class WanVideoUnit_UnifiedSequenceParallel(PipelineUnit):
@@ -1100,8 +1089,7 @@ class WanVideoUnit_S2V(PipelineUnit):
         )
         if return_all:
             return audio_embeds
-        else:
-            return {"audio_embeds": audio_embeds[0]}
+        return {"audio_embeds": audio_embeds[0]}
 
     def process_motion_latents(
         self, pipe: WanVideoPipeline, height, width, tiled, tile_size, tile_stride, motion_video=None
@@ -1167,8 +1155,7 @@ class WanVideoUnit_S2V(PipelineUnit):
             pose_conds.append(cond_latents[:, :, 1:])
         if return_all:
             return pose_conds
-        else:
-            return {"s2v_pose_latents": pose_conds[0]}
+        return {"s2v_pose_latents": pose_conds[0]}
 
     def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
         if (
@@ -1558,26 +1545,26 @@ def model_fn_wan_video(
     latents: torch.Tensor = None,
     timestep: torch.Tensor = None,
     context: torch.Tensor = None,
-    clip_feature: Optional[torch.Tensor] = None,
-    y: Optional[torch.Tensor] = None,
+    clip_feature: torch.Tensor | None = None,
+    y: torch.Tensor | None = None,
     reference_latents=None,
     vace_context=None,
     vace_scale=1.0,
-    audio_embeds: Optional[torch.Tensor] = None,
-    motion_latents: Optional[torch.Tensor] = None,
-    s2v_pose_latents: Optional[torch.Tensor] = None,
+    audio_embeds: torch.Tensor | None = None,
+    motion_latents: torch.Tensor | None = None,
+    s2v_pose_latents: torch.Tensor | None = None,
     vap_hidden_state=None,
     vap_clip_feature=None,
     context_vap=None,
     drop_motion_frames: bool = True,
     tea_cache: TeaCache = None,
     use_unified_sequence_parallel: bool = False,
-    motion_bucket_id: Optional[torch.Tensor] = None,
+    motion_bucket_id: torch.Tensor | None = None,
     pose_latents=None,
     face_pixel_values=None,
     longcat_latents=None,
-    sliding_window_size: Optional[int] = None,
-    sliding_window_stride: Optional[int] = None,
+    sliding_window_size: int | None = None,
+    sliding_window_stride: int | None = None,
     cfg_merge: bool = False,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
@@ -1961,7 +1948,9 @@ def model_fn_wans2v(
             pre_compute_freqs[0],
         )
         x = gradient_checkpoint_forward(
-            lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x),
+            lambda x, block_id=block_id: dit.after_transformer_block(
+                block_id, x, audio_emb_global, merged_audio_emb, seq_len_x
+            ),
             use_gradient_checkpointing,
             use_gradient_checkpointing_offload,
             x,

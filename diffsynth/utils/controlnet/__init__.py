@@ -1,2 +1,2 @@
-from .controlnet_input import ControlNetInput
-from .annotator import Annotator
+from .annotator import Annotator as Annotator
+from .controlnet_input import ControlNetInput as ControlNetInput

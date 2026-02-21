@@ -1,1 +1,1 @@
-from .gradient_checkpoint import gradient_checkpoint_forward
+from .gradient_checkpoint import gradient_checkpoint_forward as gradient_checkpoint_forward

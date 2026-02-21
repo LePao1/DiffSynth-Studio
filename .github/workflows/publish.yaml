@@ -19,11 +19,14 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.10'
-      - name: Install wheel
-        run: pip install wheel==0.44.0 && pip install -r requirements.txt
+      - name: Install build tools
+        run: pip install build twine wheel
       - name: Build DiffSynth
         run: python -m build
+      - name: Smoke test built package
+        run: |
+          pip install dist/*.whl --no-deps
+          python -c "import diffsynth; from diffsynth.version import __version__; print(f'Successfully imported diffsynth {__version__}')"
       - name: Publish package to PyPI
         run: |
-          pip install twine
           twine upload dist/* --skip-existing -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
