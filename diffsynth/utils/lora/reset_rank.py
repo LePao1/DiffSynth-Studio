@@ -1,5 +1,6 @@
 import torch
 
+
 def decomposite(tensor_A, tensor_B, rank):
     dtype, device = tensor_A.dtype, tensor_A.device
     weight = tensor_B @ tensor_A
@@ -8,9 +9,10 @@ def decomposite(tensor_A, tensor_B, rank):
     tensor_B = (U @ torch.diag(S)).to(dtype=dtype, device=device).contiguous()
     return tensor_A, tensor_B
 
+
 def reset_lora_rank(lora, rank):
     lora_merged = {}
-    keys = [i for i in lora.keys() if ".lora_A." in i]
+    keys = [i for i in lora if ".lora_A." in i]
     for key in keys:
         tensor_A = lora[key]
         tensor_B = lora[key.replace(".lora_A.", ".lora_B.")]

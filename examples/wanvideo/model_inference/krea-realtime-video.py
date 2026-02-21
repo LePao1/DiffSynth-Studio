@@ -1,7 +1,7 @@
 import torch
-from diffsynth.utils.data import save_video
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline
+from diffsynth.utils.data import save_video
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -17,8 +17,10 @@ pipe = WanVideoPipeline.from_pretrained(
 # Text-to-video
 video = pipe(
     prompt="a cat sitting on a boat",
-    num_inference_steps=6, num_frames=81,
-    seed=0, tiled=True,
+    num_inference_steps=6,
+    num_frames=81,
+    seed=0,
+    tiled=True,
     cfg_scale=1,
     sigma_shift=20,
 )

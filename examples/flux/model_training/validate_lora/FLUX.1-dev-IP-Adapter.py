@@ -1,7 +1,7 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -20,7 +20,8 @@ pipe.load_lora(pipe.dit, "models/train/FLUX.1-dev-IP-Adapter_lora/epoch-4.safete
 image = pipe(
     prompt="dog,white and brown dog, sitting on wall, under pink flowers",
     ipadapter_images=Image.open("data/example_image_dataset/1.jpg"),
-    height=768, width=768,
-    seed=0
+    height=768,
+    width=768,
+    seed=0,
 )
 image.save("image_FLUX.1-dev-IP-Adapter_lora.jpg")

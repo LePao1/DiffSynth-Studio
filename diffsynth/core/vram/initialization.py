@@ -1,9 +1,10 @@
-import torch
 from contextlib import contextmanager
+
+import torch
 
 
 @contextmanager
-def skip_model_initialization(device=torch.device("meta")):
+def skip_model_initialization(device=torch.device("meta")):  # noqa: B008
 
     def register_empty_parameter(module, name, param):
         old_register_parameter(module, name, param)

@@ -1,13 +1,19 @@
 import importlib
+
 import torch
+
 from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
-
 if importlib.util.find_spec("transformers") is None:
-    raise ImportError("You are using Nexus-GenV2. It depends on transformers, which is not installed. Please install it with `pip install transformers==4.49.0`.")
+    raise ImportError(
+        "You are using Nexus-GenV2. It depends on transformers, which is not installed. Please install it with `pip install transformers==4.49.0`."
+    )
 else:
     import transformers
-    assert transformers.__version__ == "4.49.0", "Nexus-GenV2 requires transformers==4.49.0, please install it with `pip install transformers==4.49.0`."
+
+    assert transformers.__version__ == "4.49.0", (
+        "Nexus-GenV2 requires transformers==4.49.0, please install it with `pip install transformers==4.49.0`."
+    )
 
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -25,8 +31,12 @@ pipe = FluxImagePipeline.from_pretrained(
 
 prompt = "一只可爱的猫咪"
 image = pipe(
-    prompt=prompt, negative_prompt="",
-    seed=0, cfg_scale=3, num_inference_steps=50,
-    height=1024, width=1024,
+    prompt=prompt,
+    negative_prompt="",
+    seed=0,
+    cfg_scale=3,
+    num_inference_steps=50,
+    height=1024,
+    width=1024,
 )
 image.save("cat.jpg")

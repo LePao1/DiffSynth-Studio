@@ -1,7 +1,7 @@
-from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
-from diffsynth.core import load_state_dict
 import torch
 
+from diffsynth.core import load_state_dict
+from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 
 pipe = Flux2ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -9,7 +9,9 @@ pipe = Flux2ImagePipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="text_encoder/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="transformer/*.safetensors"),
-        ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="tokenizer/"),
 )

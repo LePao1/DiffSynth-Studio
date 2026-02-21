@@ -1,7 +1,6 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
-from PIL import Image
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 vram_config = {
     "offload_dtype": torch.float8_e4m3fn,
@@ -17,12 +16,22 @@ pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.1-Kontext-dev", origin_file_pattern="flux1-kontext-dev.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-Kontext-dev",
+            origin_file_pattern="flux1-kontext-dev.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev",
+            origin_file_pattern="text_encoder/model.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config
+        ),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024**3) - 0.5,
 )
 
 image_1 = pipe(
