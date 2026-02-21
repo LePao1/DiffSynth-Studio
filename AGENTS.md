@@ -81,8 +81,8 @@ bash examples/qwen_image/model_training/lora/Qwen-Image.sh
 cd docs/en && make html
 
 # Lint
-ruff check diffsynth/
-ruff format diffsynth/
+uv ruff check diffsynth/
+uv ruff format diffsynth/
 
 # Build package
 uv build
