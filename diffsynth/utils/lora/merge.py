@@ -1,5 +1,4 @@
 import torch
-from typing import Dict, List
 
 
 def merge_lora_weight(tensors_A, tensors_B):
@@ -8,9 +7,9 @@ def merge_lora_weight(tensors_A, tensors_B):
     return lora_A, lora_B
 
 
-def merge_lora(loras: List[Dict[str, torch.Tensor]], alpha=1):
+def merge_lora(loras: list[dict[str, torch.Tensor]], alpha=1):
     lora_merged = {}
-    keys = [i for i in loras[0].keys() if ".lora_A." in i]
+    keys = [i for i in loras[0] if ".lora_A." in i]
     for key in keys:
         tensors_A = [lora[key] for lora in loras]
         tensors_B = [lora[key.replace(".lora_A.", ".lora_B.")] for lora in loras]

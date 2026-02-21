@@ -1,9 +1,10 @@
-import torch
-from PIL import Image
 import librosa
-from diffsynth.utils.data import VideoData, save_video_with_audio
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig, WanVideoUnit_S2V
+import torch
 from modelscope import dataset_snapshot_download
+from PIL import Image
+
+from diffsynth.pipelines.wan_video import ModelConfig, WanVideoPipeline, WanVideoUnit_S2V
+from diffsynth.utils.data import VideoData, save_video_with_audio
 
 
 def speech_to_video(
@@ -18,8 +19,8 @@ def speech_to_video(
     height=448,
     width=832,
     num_inference_steps=40,
-    fps=16, # recommend fixing fps as 16 for s2v
-    motion_frames=73, # hyperparameter of wan2.2-s2v
+    fps=16,  # recommend fixing fps as 16 for s2v
+    motion_frames=73,  # hyperparameter of wan2.2-s2v
     save_path=None,
 ):
     # s2v audio input, recommend 16kHz sampling rate
@@ -59,18 +60,21 @@ def speech_to_video(
             output_type="floatpoint",
         )
         # (B, C, T, H, W)
-        current_clip_tensor = current_clip_tensor[:,:,-infer_frames:,:,:]
+        current_clip_tensor = current_clip_tensor[:, :, -infer_frames:, :, :]
         if r == 0:
-            current_clip_tensor = current_clip_tensor[:,:,3:,:,:]
+            current_clip_tensor = current_clip_tensor[:, :, 3:, :, :]
             overlap_frames_num = min(motion_frames, current_clip_tensor.shape[2])
-            motion_video = current_clip_tensor[:,:,-overlap_frames_num:,:,:].clone()
+            motion_video = current_clip_tensor[:, :, -overlap_frames_num:, :, :].clone()
         else:
             overlap_frames_num = min(motion_frames, current_clip_tensor.shape[2])
-            motion_video = torch.cat((motion_video[:,:,overlap_frames_num:,:,:], current_clip_tensor[:,:,-overlap_frames_num:,:,:]), dim=2)
+            motion_video = torch.cat(
+                (motion_video[:, :, overlap_frames_num:, :, :], current_clip_tensor[:, :, -overlap_frames_num:, :, :]),
+                dim=2,
+            )
         current_clip_quantized = pipe.vae_output_to_video(current_clip_tensor)
         video.extend(current_clip_quantized)
         save_video_with_audio(video, save_path, audio_path, fps=16, quality=5)
-        print(f"processed the {r+1}th clip of total {num_repeat} clips.")
+        print(f"processed the {r + 1}th clip of total {num_repeat} clips.")
     return video
 
 
@@ -80,17 +84,21 @@ pipe = WanVideoPipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
-        ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors"),
+        ModelConfig(
+            model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors"
+        ),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
-    audio_processor_config=ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/"),
+    audio_processor_config=ModelConfig(
+        model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/"
+    ),
 )
 
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_video_dataset",
     local_dir="./data/example_video_dataset",
-    allow_file_pattern=f"wans2v/*",
+    allow_file_pattern="wans2v/*",
 )
 
 infer_frames = 80  # 4n
@@ -104,9 +112,9 @@ input_image = Image.open("data/example_video_dataset/wans2v/pose.png").convert("
 video_with_audio = speech_to_video(
     prompt=prompt,
     input_image=input_image,
-    audio_path='data/example_video_dataset/wans2v/sing.MP3',
+    audio_path="data/example_video_dataset/wans2v/sing.MP3",
     negative_prompt=negative_prompt,
-    pose_video_path='data/example_video_dataset/wans2v/pose.mp4',
+    pose_video_path="data/example_video_dataset/wans2v/pose.mp4",
     save_path="video_full_Wan2.2-S2V-14B.mp4",
     infer_frames=infer_frames,
     height=height,
@@ -116,9 +124,9 @@ video_with_audio = speech_to_video(
 video_with_audio_pose = speech_to_video(
     prompt=prompt,
     input_image=input_image,
-    audio_path='data/example_video_dataset/wans2v/sing.MP3',
+    audio_path="data/example_video_dataset/wans2v/sing.MP3",
     negative_prompt=negative_prompt,
-    pose_video_path='data/example_video_dataset/wans2v/pose.mp4',
+    pose_video_path="data/example_video_dataset/wans2v/pose.mp4",
     save_path="video_clip_2_Wan2.2-S2V-14B.mp4",
-    num_clip=2
+    num_clip=2,
 )

@@ -1,6 +1,6 @@
-from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 import torch
 
+from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -16,9 +16,17 @@ pipe = Flux2ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="transformer/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="text_encoder/*.safetensors", **vram_config
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="transformer/*.safetensors", **vram_config
+        ),
+        ModelConfig(
+            model_id="black-forest-labs/FLUX.2-dev",
+            origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
+            **vram_config,
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
 )

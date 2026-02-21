@@ -1,6 +1,6 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -19,6 +19,5 @@ origin_prompt = "a rabbit in a garden, colorful flowers"
 image = pipe(prompt=origin_prompt, height=1280, width=960, seed=42)
 image.save("style image.jpg")
 
-image = pipe(prompt="A piggy", height=1280, width=960, seed=42,
-    ipadapter_images=[image], ipadapter_scale=0.7)
+image = pipe(prompt="A piggy", height=1280, width=960, seed=42, ipadapter_images=[image], ipadapter_scale=0.7)
 image.save("A piggy.jpg")

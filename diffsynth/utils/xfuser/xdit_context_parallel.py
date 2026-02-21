@@ -1,20 +1,20 @@
 import torch
-from typing import Optional
 from einops import rearrange
 from yunchang.kernels import AttnType
-from xfuser.core.distributed import (get_sequence_parallel_rank,
-                                     get_sequence_parallel_world_size,
-                                     get_sp_group)
+
+from xfuser.core.distributed import get_sequence_parallel_rank, get_sequence_parallel_world_size, get_sp_group
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
 
 from ... import IS_NPU_AVAILABLE
-from ...core.device import parse_nccl_backend, parse_device_type
+from ...core.device import parse_device_type, parse_nccl_backend
 from ...core.gradient import gradient_checkpoint_forward
 
 
 def initialize_usp(device_type):
     import torch.distributed as dist
-    from xfuser.core.distributed import initialize_model_parallel, init_distributed_environment
+
+    from xfuser.core.distributed import init_distributed_environment, initialize_model_parallel
+
     dist.init_process_group(backend=parse_nccl_backend(device_type), init_method="env://")
     init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
     initialize_model_parallel(
@@ -26,10 +26,13 @@ def initialize_usp(device_type):
 
 
 def sinusoidal_embedding_1d(dim, position):
-    sinusoid = torch.outer(position.type(torch.float64), torch.pow(
-        10000, -torch.arange(dim//2, dtype=torch.float64, device=position.device).div(dim//2)))
+    sinusoid = torch.outer(
+        position.type(torch.float64),
+        torch.pow(10000, -torch.arange(dim // 2, dtype=torch.float64, device=position.device).div(dim // 2)),
+    )
     x = torch.cat([torch.cos(sinusoid), torch.sin(sinusoid)], dim=1)
     return x.to(position.dtype)
+
 
 def pad_freqs(original_tensor, target_len):
     seq_len, s1, s2 = original_tensor.shape
@@ -37,71 +40,73 @@ def pad_freqs(original_tensor, target_len):
     original_tensor_device = original_tensor.device
     if original_tensor.device == "npu":
         original_tensor = original_tensor.cpu()
-    padding_tensor = torch.ones(
-        pad_size,
-        s1,
-        s2,
-        dtype=original_tensor.dtype,
-        device=original_tensor.device)
+    padding_tensor = torch.ones(pad_size, s1, s2, dtype=original_tensor.dtype, device=original_tensor.device)
     padded_tensor = torch.cat([original_tensor, padding_tensor], dim=0).to(device=original_tensor_device)
-    return padded_tensor
-    
+    return padded_tensor  # noqa: RET504 – readability
+
+
 def rope_apply(x, freqs, num_heads):
     x = rearrange(x, "b s (n d) -> b s n d", n=num_heads)
     s_per_rank = x.shape[1]
 
-    x_out = torch.view_as_complex(x.to(torch.float64).reshape(
-        x.shape[0], x.shape[1], x.shape[2], -1, 2))
+    x_out = torch.view_as_complex(x.to(torch.float64).reshape(x.shape[0], x.shape[1], x.shape[2], -1, 2))
 
     sp_size = get_sequence_parallel_world_size()
     sp_rank = get_sequence_parallel_rank()
     freqs = pad_freqs(freqs, s_per_rank * sp_size)
-    freqs_rank = freqs[(sp_rank * s_per_rank):((sp_rank + 1) * s_per_rank), :, :]
+    freqs_rank = freqs[(sp_rank * s_per_rank) : ((sp_rank + 1) * s_per_rank), :, :]
     freqs_rank = freqs_rank.to(torch.complex64) if freqs_rank.device.type == "npu" else freqs_rank
     x_out = torch.view_as_real(x_out * freqs_rank).flatten(2)
     return x_out.to(x.dtype)
 
-def usp_dit_forward(self,
-            x: torch.Tensor,
-            timestep: torch.Tensor,
-            context: torch.Tensor,
-            clip_feature: Optional[torch.Tensor] = None,
-            y: Optional[torch.Tensor] = None,
-            use_gradient_checkpointing: bool = False,
-            use_gradient_checkpointing_offload: bool = False,
-            **kwargs,
-            ):
-    t = self.time_embedding(
-        sinusoidal_embedding_1d(self.freq_dim, timestep))
+
+def usp_dit_forward(
+    self,
+    x: torch.Tensor,
+    timestep: torch.Tensor,
+    context: torch.Tensor,
+    clip_feature: torch.Tensor | None = None,
+    y: torch.Tensor | None = None,
+    use_gradient_checkpointing: bool = False,
+    use_gradient_checkpointing_offload: bool = False,
+    **kwargs,
+):
+    t = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, timestep))
     t_mod = self.time_projection(t).unflatten(1, (6, self.dim))
     context = self.text_embedding(context)
-    
+
     if self.has_image_input:
         x = torch.cat([x, y], dim=1)  # (b, c_x + c_y, f, h, w)
         clip_embdding = self.img_emb(clip_feature)
         context = torch.cat([clip_embdding, context], dim=1)
-    
+
     x, (f, h, w) = self.patchify(x)
-    
-    freqs = torch.cat([
-        self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
-        self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
-        self.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
-    ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
+
+    freqs = (
+        torch.cat(
+            [
+                self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
+                self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
+                self.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1),
+            ],
+            dim=-1,
+        )
+        .reshape(f * h * w, 1, -1)
+        .to(x.device)
+    )
 
     # Context Parallel
     chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
     pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
-    chunks = [torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1]-chunk.shape[1]), value=0) for chunk in chunks]
+    chunks = [
+        torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1] - chunk.shape[1]), value=0) for chunk in chunks
+    ]
     x = chunks[get_sequence_parallel_rank()]
 
     for block in self.blocks:
         if self.training:
             x = gradient_checkpoint_forward(
-                block,
-                use_gradient_checkpointing,
-                use_gradient_checkpointing_offload,
-                x, context, t_mod, freqs
+                block, use_gradient_checkpointing, use_gradient_checkpointing_offload, x, context, t_mod, freqs
             )
         else:
             x = block(x, context, t_mod, freqs)
@@ -114,7 +119,7 @@ def usp_dit_forward(self,
 
     # unpatchify
     x = self.unpatchify(x, (f, h, w))
-    return x
+    return x  # noqa: RET504 – readability
 
 
 def usp_attn_forward(self, x, freqs):

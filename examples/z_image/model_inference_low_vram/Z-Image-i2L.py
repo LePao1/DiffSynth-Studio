@@ -1,11 +1,14 @@
-from diffsynth.pipelines.z_image import (
-    ZImagePipeline, ModelConfig,
-    ZImageUnit_Image2LoRAEncode, ZImageUnit_Image2LoRADecode
-)
-from modelscope import snapshot_download
-from safetensors.torch import save_file
 import torch
+from modelscope import snapshot_download
 from PIL import Image
+from safetensors.torch import save_file
+
+from diffsynth.pipelines.z_image import (
+    ModelConfig,
+    ZImagePipeline,
+    ZImageUnit_Image2LoRADecode,
+    ZImageUnit_Image2LoRAEncode,
+)
 
 # Use `vram_config` to enable LoRA hot-loading
 vram_config = {
@@ -25,10 +28,24 @@ pipe = ZImagePipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Tongyi-MAI/Z-Image", origin_file_pattern="transformer/*.safetensors", **vram_config),
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors", **vram_config),
+        ModelConfig(
+            model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors", **vram_config
+        ),
+        ModelConfig(
+            model_id="Tongyi-MAI/Z-Image-Turbo",
+            origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/General-Image-Encoders",
+            origin_file_pattern="SigLIP2-G384/model.safetensors",
+            **vram_config,
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/General-Image-Encoders",
+            origin_file_pattern="DINOv3-7B/model.safetensors",
+            **vram_config,
+        ),
         ModelConfig(model_id="DiffSynth-Studio/Z-Image-i2L", origin_file_pattern="model.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
@@ -39,7 +56,7 @@ pipe = ZImagePipeline.from_pretrained(
 snapshot_download(
     model_id="DiffSynth-Studio/Z-Image-i2L",
     allow_file_pattern="assets/style/*",
-    local_dir="data/Z-Image-i2L_style_input"
+    local_dir="data/Z-Image-i2L_style_input",
 )
 images = [Image.open(f"data/Z-Image-i2L_style_input/assets/style/1/{i}.jpg") for i in range(4)]
 
@@ -55,8 +72,10 @@ negative_prompt = "泛黄，发绿，模糊，低分辨率，低质量图像，�
 image = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
-    seed=0, cfg_scale=4, num_inference_steps=50,
+    seed=0,
+    cfg_scale=4,
+    num_inference_steps=50,
     positive_only_lora=lora,
-    sigma_shift=8
+    sigma_shift=8,
 )
 image.save("image.jpg")

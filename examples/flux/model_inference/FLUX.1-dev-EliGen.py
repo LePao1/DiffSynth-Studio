@@ -1,14 +1,16 @@
 import random
+
 import torch
-from PIL import Image, ImageDraw, ImageFont
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+from PIL import Image, ImageDraw, ImageFont
+
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
-    overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+
     colors = [
         (165, 238, 173, 80),
         (76, 102, 221, 80),
@@ -29,18 +31,20 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
     ]
     # Generate random colors for each mask
     if use_random_colors:
-        colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))]
-    
+        colors = [
+            (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))
+        ]
+
     # Font settings
     try:
         font = ImageFont.truetype("arial", font_size)  # Adjust as needed
-    except IOError:
+    except OSError:
         font = ImageFont.load_default(font_size)
 
     # Overlay each mask onto the overlay image
-    for mask, mask_prompt, color in zip(masks, mask_prompts, colors):
+    for mask, mask_prompt, color in zip(masks, mask_prompts, colors, strict=False):
         # Convert mask to RGBA mode
-        mask_rgba = mask.convert('RGBA')
+        mask_rgba = mask.convert("RGBA")
         mask_data = mask_rgba.getdata()
         new_data = [(color if item[:3] == (255, 255, 255) else (0, 0, 0, 0)) for item in mask_data]
         mask_rgba.putdata(new_data)
@@ -53,18 +57,26 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
 
         # Alpha composite the overlay with this mask
         overlay = Image.alpha_composite(overlay, mask_rgba)
-    
+
     # Composite the overlay onto the original image
-    result = Image.alpha_composite(image.convert('RGBA'), overlay)
-    
+    result = Image.alpha_composite(image.convert("RGBA"), overlay)
+
     # Save or display the resulting image
     result.save(output_path)
 
     return result
 
+
 def example(pipe, seeds, example_id, global_prompt, entity_prompts):
-    dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/entity_control/example_{example_id}/*.png")
-    masks = [Image.open(f"./data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+    dataset_snapshot_download(
+        dataset_id="DiffSynth-Studio/examples_in_diffsynth",
+        local_dir="./",
+        allow_file_pattern=f"data/examples/eligen/entity_control/example_{example_id}/*.png",
+    )
+    masks = [
+        Image.open(f"./data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert("RGB")
+        for i in range(len(entity_prompts))
+    ]
     negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"
     for seed in seeds:
         # generate image
@@ -94,11 +106,20 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
     ],
 )
-pipe.load_lora(pipe.dit, ModelConfig(model_id="DiffSynth-Studio/Eligen", origin_file_pattern="model_bf16.safetensors"), alpha=1)
+pipe.load_lora(
+    pipe.dit, ModelConfig(model_id="DiffSynth-Studio/Eligen", origin_file_pattern="model_bf16.safetensors"), alpha=1
+)
 
 # example 1
 global_prompt = "A breathtaking beauty of Raja Ampat by the late-night moonlight , one beautiful woman from behind wearing a pale blue long dress with soft glow, sitting at the top of a cliff looking towards the beach,pastell light colors, a group of small distant birds flying in far sky, a boat sailing on the sea, best quality, realistic, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, maximalist style, photorealistic, concept art, sharp focus, harmony, serenity, tranquility, soft pastell colors,ambient occlusion, cozy ambient lighting, masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning, view from above\n"
-entity_prompts = ["cliff", "sea", "moon", "sailing boat", "a seated beautiful woman", "pale blue long dress with soft glow"]
+entity_prompts = [
+    "cliff",
+    "sea",
+    "moon",
+    "sailing boat",
+    "a seated beautiful woman",
+    "pale blue long dress with soft glow",
+]
 example(pipe, [0], 1, global_prompt, entity_prompts)
 
 # example 2

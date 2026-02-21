@@ -1,7 +1,15 @@
-import torch, accelerate
+import accelerate
+import torch
+
 from diffsynth.core import UnifiedDataset
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-from diffsynth.diffusion import *
+from diffsynth.diffusion import (
+    DiffusionTrainingModule,
+    FlowMatchSFTLoss,
+    ModelLogger,
+    launch_training_task,
+)
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
+
 
 class QwenImageTrainingModule(DiffusionTrainingModule):
     def __init__(self, device):
@@ -11,7 +19,9 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             torch_dtype=torch.bfloat16,
             device=device,
             model_configs=[
-                ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+                ModelConfig(
+                    model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"
+                ),
                 ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
                 ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
             ],
@@ -43,10 +53,13 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing_offload": False,
         }
         for unit in self.pipe.units:
-            inputs_shared, inputs_posi, inputs_nega = self.pipe.unit_runner(unit, self.pipe, inputs_shared, inputs_posi, inputs_nega)
+            inputs_shared, inputs_posi, inputs_nega = self.pipe.unit_runner(
+                unit, self.pipe, inputs_shared, inputs_posi, inputs_nega
+            )
         # Loss
         loss = FlowMatchSFTLoss(self.pipe, **inputs_shared, **inputs_posi)
-        return loss
+        return loss  # noqa: RET504 – readability
+
 
 if __name__ == "__main__":
     accelerator = accelerate.Accelerator(
@@ -63,7 +76,7 @@ if __name__ == "__main__":
             width=512,
             height_division_factor=16,
             width_division_factor=16,
-        )
+        ),
     )
     model = QwenImageTrainingModule(accelerator.device)
     model_logger = ModelLogger(
@@ -71,6 +84,10 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt="pipe.dit.",
     )
     launch_training_task(
-        accelerator, dataset, model, model_logger,
-        learning_rate=1e-5, num_epochs=1,
+        accelerator,
+        dataset,
+        model,
+        model_logger,
+        learning_rate=1e-5,
+        num_epochs=1,
     )

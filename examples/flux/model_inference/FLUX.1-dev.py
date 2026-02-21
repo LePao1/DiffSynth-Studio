@@ -1,6 +1,6 @@
 import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -20,7 +20,10 @@ image = pipe(prompt=prompt, seed=0)
 image.save("flux.jpg")
 
 image = pipe(
-    prompt=prompt, negative_prompt=negative_prompt,
-    seed=0, cfg_scale=2, num_inference_steps=50,
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    seed=0,
+    cfg_scale=2,
+    num_inference_steps=50,
 )
 image.save("flux_cfg.jpg")

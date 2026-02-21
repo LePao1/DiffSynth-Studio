@@ -1,17 +1,22 @@
-from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig, ControlNetInput
+import torch
 from modelscope import dataset_snapshot_download
 from PIL import Image
-import torch
 
+from diffsynth.pipelines.z_image import ControlNetInput, ModelConfig, ZImagePipeline
 
 pipe = ZImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1", origin_file_pattern="Z-Image-Turbo-Fun-Controlnet-Union-2.1.safetensors"),
+        ModelConfig(
+            model_id="PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1",
+            origin_file_pattern="Z-Image-Turbo-Fun-Controlnet-Union-2.1.safetensors",
+        ),
         ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors"),
         ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors"),
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(
+            model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"
+        ),
     ],
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
 )
@@ -20,12 +25,16 @@ pipe = ZImagePipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_image_dataset",
     local_dir="./data/example_image_dataset",
-    allow_file_pattern="depth/image_1.jpg"
+    allow_file_pattern="depth/image_1.jpg",
 )
 controlnet_image = Image.open("data/example_image_dataset/depth/image_1.jpg").resize((1024, 1024))
 prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
 image = pipe(
-    prompt=prompt, seed=0, height=1024, width=1024, controlnet_inputs=[ControlNetInput(image=controlnet_image, scale=0.7)],
+    prompt=prompt,
+    seed=0,
+    height=1024,
+    width=1024,
+    controlnet_inputs=[ControlNetInput(image=controlnet_image, scale=0.7)],
     num_inference_steps=30,
 )
 image.save("image_control.jpg")
@@ -34,13 +43,17 @@ image.save("image_control.jpg")
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_image_dataset",
     local_dir="./data/example_image_dataset",
-    allow_file_pattern="inpaint/*.jpg"
+    allow_file_pattern="inpaint/*.jpg",
 )
 inpaint_image = Image.open("./data/example_image_dataset/inpaint/image_1.jpg").convert("RGB").resize((1024, 1024))
 inpaint_mask = Image.open("./data/example_image_dataset/inpaint/mask.jpg").convert("RGB").resize((1024, 1024))
 prompt = "一只戴着墨镜的猫"
 image = pipe(
-    prompt=prompt, seed=0, height=1024, width=1024, controlnet_inputs=[ControlNetInput(inpaint_image=inpaint_image, inpaint_mask=inpaint_mask, scale=0.7)],
+    prompt=prompt,
+    seed=0,
+    height=1024,
+    width=1024,
+    controlnet_inputs=[ControlNetInput(inpaint_image=inpaint_image, inpaint_mask=inpaint_mask, scale=0.7)],
     num_inference_steps=30,
 )
 image.save("image_inpaint.jpg")
