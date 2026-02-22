@@ -144,9 +144,9 @@ class AAAImagePipeline(BasePipeline):
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str | torch.device = "cuda",
-        model_configs: list[ModelConfig] = None,
+        model_configs: list[ModelConfig] | None = None,
         tokenizer_config: ModelConfig = None,
-        vram_limit: float = None,
+        vram_limit: float | None = None,
     ):
         if model_configs is None:
             model_configs = []
@@ -180,7 +180,7 @@ class AAAImagePipeline(BasePipeline):
         height: int = 1024,
         width: int = 1024,
         # Randomness
-        seed: int = None,
+        seed: int | None = None,
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,

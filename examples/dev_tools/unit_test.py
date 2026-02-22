@@ -35,7 +35,7 @@ def run_inference(script_path):
         print(cmd, flush=True)
         os.system(cmd)
         for file_name in os.listdir("./"):
-            if file_name.endswith(".jpg") or file_name.endswith(".png") or file_name.endswith(".mp4"):
+            if file_name.endswith((".jpg", ".png", ".mp4")):
                 shutil.move(file_name, os.path.join(target_path, file_name))
 
 
