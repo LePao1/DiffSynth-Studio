@@ -1241,7 +1241,7 @@ class FastTileWorker:
         return values
 
 
-def model_fn_flux_image(
+def model_fn_flux_image(  # noqa: C901
     dit: FluxDiT,
     controlnet=None,
     step1x_connector=None,

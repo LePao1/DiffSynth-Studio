@@ -94,7 +94,7 @@ class WanVideoPipeline(BasePipeline):
         self.use_unified_sequence_parallel = True
 
     @staticmethod
-    def from_pretrained(
+    def from_pretrained(  # noqa: C901
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str | torch.device = get_device_type(),
         model_configs: list[ModelConfig] | None = None,
@@ -1629,7 +1629,7 @@ class TemporalTiler_BCTHW:
         return value
 
 
-def model_fn_wan_video(
+def model_fn_wan_video(  # noqa: C901
     dit: WanModel,
     motion_controller: WanMotionControllerModel = None,
     vace: VaceWanModel = None,
