@@ -22,9 +22,11 @@ class Annotator:
         processor_id: Processor_id,
         model_path="models/Annotators",
         detect_resolution=None,
-        device=get_device_type(),
+        device=None,
         skip_processor=False,
     ):
+        if device is None:
+            device = get_device_type()
         if not skip_processor:
             if processor_id == "canny":
                 from controlnet_aux.processor import CannyDetector

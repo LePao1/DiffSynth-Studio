@@ -22,7 +22,9 @@ from ..utils.lora.merge import merge_lora
 
 
 class QwenImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=None, torch_dtype=torch.bfloat16):
+        if device is None:
+            device = get_device_type()
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -61,12 +63,16 @@ class QwenImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
+        device: str | torch.device | None = None,
         model_configs: list[ModelConfig] | None = None,
-        tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+        tokenizer_config: ModelConfig | None = None,
         processor_config: ModelConfig = None,
         vram_limit: float | None = None,
     ):
+        if device is None:
+            device = get_device_type()
+        if tokenizer_config is None:
+            tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/")
         if model_configs is None:
             model_configs = []
         # Initialize pipeline

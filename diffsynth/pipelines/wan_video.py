@@ -26,7 +26,9 @@ from ..models.wav2vec import WanS2VAudioEncoder
 
 
 class WanVideoPipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=None, torch_dtype=torch.bfloat16):
+        if device is None:
+            device = get_device_type()
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -96,17 +98,21 @@ class WanVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(  # noqa: C901
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
+        device: str | torch.device | None = None,
         model_configs: list[ModelConfig] | None = None,
-        tokenizer_config: ModelConfig = ModelConfig(
-            model_id="Wan-AI/Wan2.1-T2V-1.3B",
-            origin_file_pattern="google/umt5-xxl/",
-        ),
+        tokenizer_config: ModelConfig | None = None,
         audio_processor_config: ModelConfig = None,
         redirect_common_files: bool = True,
         use_usp: bool = False,
         vram_limit: float | None = None,
     ):
+        if device is None:
+            device = get_device_type()
+        if tokenizer_config is None:
+            tokenizer_config = ModelConfig(
+                model_id="Wan-AI/Wan2.1-T2V-1.3B",
+                origin_file_pattern="google/umt5-xxl/",
+            )
         if model_configs is None:
             model_configs = []
         # Redirect model path
@@ -1424,7 +1430,9 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
             onload_model_names=("vae",),
         )
 
-    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=get_device_type()):
+    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=None):
+        if device is None:
+            device = get_device_type()
         if mask_pixel_values is None:
             msk = torch.zeros(1, (lat_t - 1) * 4 + 1, lat_h, lat_w, device=device)
         else:
@@ -1839,8 +1847,7 @@ def model_fn_wan_video(  # noqa: C901
         chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
         pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
         chunks = [
-            torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1] - chunk.shape[1]), value=0)
-            for chunk in chunks
+            torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1] - chunk.shape[1]), value=0) for chunk in chunks
         ]
         x = chunks[get_sequence_parallel_rank()]
     if tea_cache_update:

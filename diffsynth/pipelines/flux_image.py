@@ -61,7 +61,9 @@ class MultiControlNet(torch.nn.Module):
 
 
 class FluxImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=None, torch_dtype=torch.bfloat16):
+        if device is None:
+            device = get_device_type()
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -123,28 +125,38 @@ class FluxImagePipeline(BasePipeline):
                         module.lora_merger = self.lora_patcher.model_dict[merger_name]
 
     @staticmethod
-    def from_pretrained(
+    def from_pretrained(  # noqa: C901
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),
+        device: str | torch.device | None = None,
         model_configs: list[ModelConfig] | None = None,
-        tokenizer_1_config: ModelConfig = ModelConfig(
-            model_id="black-forest-labs/FLUX.1-dev",
-            origin_file_pattern="tokenizer/",
-        ),
-        tokenizer_2_config: ModelConfig = ModelConfig(
-            model_id="black-forest-labs/FLUX.1-dev",
-            origin_file_pattern="tokenizer_2/",
-        ),
-        nexus_gen_processor_config: ModelConfig = ModelConfig(
-            model_id="DiffSynth-Studio/Nexus-GenV2",
-            origin_file_pattern="processor/",
-        ),
-        step1x_processor_config: ModelConfig = ModelConfig(
-            model_id="Qwen/Qwen2.5-VL-7B-Instruct",
-            origin_file_pattern="",
-        ),
+        tokenizer_1_config: ModelConfig | None = None,
+        tokenizer_2_config: ModelConfig | None = None,
+        nexus_gen_processor_config: ModelConfig | None = None,
+        step1x_processor_config: ModelConfig | None = None,
         vram_limit: float | None = None,
     ):
+        if device is None:
+            device = get_device_type()
+        if tokenizer_1_config is None:
+            tokenizer_1_config = ModelConfig(
+                model_id="black-forest-labs/FLUX.1-dev",
+                origin_file_pattern="tokenizer/",
+            )
+        if tokenizer_2_config is None:
+            tokenizer_2_config = ModelConfig(
+                model_id="black-forest-labs/FLUX.1-dev",
+                origin_file_pattern="tokenizer_2/",
+            )
+        if nexus_gen_processor_config is None:
+            nexus_gen_processor_config = ModelConfig(
+                model_id="DiffSynth-Studio/Nexus-GenV2",
+                origin_file_pattern="processor/",
+            )
+        if step1x_processor_config is None:
+            step1x_processor_config = ModelConfig(
+                model_id="Qwen/Qwen2.5-VL-7B-Instruct",
+                origin_file_pattern="",
+            )
         if model_configs is None:
             model_configs = []
         # Initialize pipeline
@@ -444,9 +456,11 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
         text_encoder_2,
         prompt,
         positive=True,
-        device=get_device_type(),
+        device=None,
         t5_sequence_length=512,
     ):
+        if device is None:
+            device = get_device_type()
         pooled_prompt_emb = self.encode_prompt_using_clip(prompt, text_encoder_1, tokenizer_1, 77, device)
         prompt_emb = self.encode_prompt_using_t5(prompt, text_encoder_2, tokenizer_2, t5_sequence_length, device)
         text_ids = torch.zeros(prompt_emb.shape[0], prompt_emb.shape[1], 3).to(device=device, dtype=prompt_emb.dtype)
@@ -642,9 +656,11 @@ class FluxImageUnit_EntityControl(PipelineUnit):
         text_encoder_2,
         prompt,
         positive=True,
-        device=get_device_type(),
+        device=None,
         t5_sequence_length=512,
     ):
+        if device is None:
+            device = get_device_type()
         pooled_prompt_emb = self.encode_prompt_using_clip(prompt, text_encoder_1, tokenizer_1, 77, device)
         prompt_emb = self.encode_prompt_using_t5(prompt, text_encoder_2, tokenizer_2, t5_sequence_length, device)
         text_ids = torch.zeros(prompt_emb.shape[0], prompt_emb.shape[1], 3).to(device=device, dtype=prompt_emb.dtype)
@@ -988,8 +1004,10 @@ class FluxImageUnit_ValueControl(PipelineUnit):
 
 
 class InfinitYou(torch.nn.Module):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=None, torch_dtype=torch.bfloat16):
         super().__init__()
+        if device is None:
+            device = get_device_type()
         from facexlib.recognition import init_recognition_model
         from insightface.app import FaceAnalysis
 

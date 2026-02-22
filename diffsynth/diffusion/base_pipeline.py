@@ -59,7 +59,7 @@ class PipelineUnit:
 class BasePipeline(torch.nn.Module):
     def __init__(
         self,
-        device=get_device_type(),
+        device=None,
         torch_dtype=torch.float16,
         height_division_factor=64,
         width_division_factor=64,
@@ -67,6 +67,8 @@ class BasePipeline(torch.nn.Module):
         time_division_remainder=None,
     ):
         super().__init__()
+        if device is None:
+            device = get_device_type()
         # The device and torch_dtype is used for the storage of intermediate variables, not models.
         self.device = device
         self.torch_dtype = torch_dtype
