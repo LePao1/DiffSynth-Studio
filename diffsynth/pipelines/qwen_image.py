@@ -254,7 +254,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
             if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                 self.vram_management_enabled = True
 
-    def preprocess(self, controlnet_inputs: list[ControlNetInput], conditionings: list[torch.Tensor], **kwargs):
+    def preprocess(self, controlnet_inputs: list[ControlNetInput], conditionings: list[torch.Tensor], **_kwargs):
         processed_conditionings = []
         for controlnet_input, conditioning in zip(controlnet_inputs, conditionings, strict=False):
             conditioning = rearrange(conditioning, "B C (H P) (W Q) -> B (H W) (C P Q)", P=2, Q=2)
@@ -270,7 +270,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
         progress_id,
         num_inference_steps,
         block_id,
-        **kwargs,
+        **_kwargs,
     ):
         res = 0
         for controlnet_input, conditioning in zip(controlnet_inputs, conditionings, strict=False):
@@ -899,7 +899,7 @@ def model_fn_qwen_image(
     use_gradient_checkpointing_offload=False,
     edit_rope_interpolation=False,
     zero_cond_t=False,
-    **kwargs,
+    **_kwargs,
 ):
     if layer_num is None:
         layer_num = 1

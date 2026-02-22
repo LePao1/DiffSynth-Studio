@@ -70,7 +70,7 @@ class Annotator:
         if hasattr(self.processor, "model") and hasattr(self.processor.model, "to"):
             self.processor.model.to(device)
 
-    def __call__(self, image, mask=None):
+    def __call__(self, image, _mask=None):
         width, height = image.size
         if self.processor_id == "openpose":
             kwargs = {"include_body": True, "include_hand": True, "include_face": True}

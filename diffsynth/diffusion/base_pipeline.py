@@ -49,10 +49,10 @@ class PipelineUnit:
         params = list(self.output_params) if self.output_params is not None else []
         return params
 
-    def process(self, pipe, **kwargs) -> dict:
+    def process(self, _pipe, **_kwargs) -> dict:
         return {}
 
-    def post_process(self, pipe, **kwargs) -> dict:
+    def post_process(self, _pipe, **_kwargs) -> dict:
         return {}
 
 
@@ -224,7 +224,7 @@ class BasePipeline(torch.nn.Module):
     def blend_with_mask(self, base, addition, mask):
         return base * (1 - mask) + addition * mask
 
-    def step(self, scheduler, latents, progress_id, noise_pred, input_latents=None, inpaint_mask=None, **kwargs):
+    def step(self, scheduler, latents, progress_id, noise_pred, input_latents=None, inpaint_mask=None, **_kwargs):
         timestep = scheduler.timesteps[progress_id]
         if inpaint_mask is not None:
             noise_pred_expected = scheduler.return_to_timestep(

@@ -100,7 +100,7 @@ class AutoWrappedModule(AutoTorchModule):
         vram_limit: float | None = None,
         name: str = "",
         disk_map: DiskMap = None,
-        **kwargs,
+        **_kwargs,
     ):
         super().__init__(
             offload_dtype,
@@ -244,11 +244,11 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         module.load_state_dict(state_dict, assign=True, strict=False)
         return module
 
-    def offload_to_disk(self, model: torch.nn.Module):
+    def offload_to_disk(self, _model: torch.nn.Module):
         for name in self.required_params:
             getattr(self, name).to("meta")
 
-    def cast_to(self, module, dtype, device):
+    def cast_to(self, module, _dtype, _device):
         # Parameter casting is implemented in the model architecture.
         return module
 
@@ -273,7 +273,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         vram_limit: float | None = None,
         name: str = "",
         disk_map: DiskMap = None,
-        **kwargs,
+        **_kwargs,
     ):
         with skip_model_initialization():
             super().__init__(
@@ -416,7 +416,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
             out = self.lora_merger(out, lora_output)
         return out
 
-    def forward(self, x, *args, **kwargs):
+    def forward(self, x, *_args, **_kwargs):
         if self.state == 1 and (self.vram_limit is None or self.check_free_vram()):
             self.preparing()
         weight, bias = self.computation()

@@ -455,7 +455,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
         text_encoder_1,
         text_encoder_2,
         prompt,
-        positive=True,
+        _positive=True,
         device=None,
         t5_sequence_length=512,
     ):
@@ -495,7 +495,7 @@ class FluxImageUnit_EmbeddedGuidanceEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(input_params=("embedded_guidance", "latents"), output_params=("guidance",))
 
-    def process(self, pipe: FluxImagePipeline, embedded_guidance, latents):
+    def process(self, _pipe: FluxImagePipeline, embedded_guidance, latents):
         guidance = torch.Tensor([embedded_guidance] * latents.shape[0]).to(device=latents.device, dtype=latents.dtype)
         return {"guidance": guidance}
 
@@ -655,7 +655,7 @@ class FluxImageUnit_EntityControl(PipelineUnit):
         text_encoder_1,
         text_encoder_2,
         prompt,
-        positive=True,
+        _positive=True,
         device=None,
         t5_sequence_length=512,
     ):
@@ -858,7 +858,7 @@ class FluxImageUnit_TeaCache(PipelineUnit):
     def __init__(self):
         super().__init__(input_params=("num_inference_steps", "tea_cache_l1_thresh"), output_params=("tea_cache",))
 
-    def process(self, pipe: FluxImagePipeline, num_inference_steps, tea_cache_l1_thresh):
+    def process(self, _pipe: FluxImagePipeline, num_inference_steps, tea_cache_l1_thresh):
         if tea_cache_l1_thresh is None:
             return {}
         return {"tea_cache": TeaCache(num_inference_steps=num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh)}

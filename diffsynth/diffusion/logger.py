@@ -11,7 +11,7 @@ class ModelLogger:
         self.state_dict_converter = state_dict_converter
         self.num_steps = 0
 
-    def on_step_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None, **kwargs):
+    def on_step_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None, **_kwargs):
         self.num_steps += 1
         if save_steps is not None and self.num_steps % save_steps == 0:
             self.save_model(accelerator, model, f"step-{self.num_steps}.safetensors")

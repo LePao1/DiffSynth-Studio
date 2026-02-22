@@ -22,7 +22,7 @@ def rms_norm_forward_transformers_npu(self, hidden_states):
     return torch_npu.npu_rms_norm(hidden_states, self.weight, self.variance_epsilon)[0]
 
 
-def rotary_emb_Zimage_npu(self, x_in: torch.Tensor, freqs_cis: torch.Tensor):
+def rotary_emb_Zimage_npu(_self, x_in: torch.Tensor, freqs_cis: torch.Tensor):
     "npu rope fused operator for Zimage"
     with torch.amp.autocast(get_device_type(), enabled=False):
         freqs_cis = freqs_cis.unsqueeze(2)

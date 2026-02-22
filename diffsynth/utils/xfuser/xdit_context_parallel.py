@@ -69,7 +69,7 @@ def usp_dit_forward(
     y: torch.Tensor | None = None,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
-    **kwargs,
+    **_kwargs,
 ):
     t = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, timestep))
     t_mod = self.time_projection(t).unflatten(1, (6, self.dim))

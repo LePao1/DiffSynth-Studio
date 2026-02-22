@@ -230,7 +230,7 @@ class FlowMatchScheduler:
         else:
             self.training = False
 
-    def step(self, model_output, timestep, sample, to_final=False, **kwargs):
+    def step(self, model_output, timestep, sample, to_final=False, **_kwargs):
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
@@ -255,7 +255,7 @@ class FlowMatchScheduler:
         sample = (1 - sigma) * original_samples + sigma * noise
         return sample
 
-    def training_target(self, sample, noise, timestep):
+    def training_target(self, sample, noise, _timestep):
         target = noise - sample
         return target
 

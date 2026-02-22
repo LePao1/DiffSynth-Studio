@@ -617,7 +617,7 @@ def model_fn_flux2(
     edit_image_ids=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
-    **kwargs,
+    **_kwargs,
 ):
     image_seq_len = latents.shape[1]
     if edit_latents is not None:
