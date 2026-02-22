@@ -47,7 +47,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "C90", "C4", "SIM", "RET", "COM", "RUF", "PERF", "PIE", "ARG"]
-ignore = ["E501"]
+ignore = ["E501", "COM812"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12

@@ -29,7 +29,7 @@ class ModelConfig:
     def check_input(self):
         if self.path is None and self.model_id is None:
             raise ValueError(
-                """No valid model files. Please use `ModelConfig(path="xxx")` or `ModelConfig(model_id="xxx/yyy", origin_file_pattern="zzz")`. `skip_download=True` only supports the first one."""
+                """No valid model files. Please use `ModelConfig(path="xxx")` or `ModelConfig(model_id="xxx/yyy", origin_file_pattern="zzz")`. `skip_download=True` only supports the first one.""",
             )
 
     def parse_original_file_pattern(self):

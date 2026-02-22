@@ -19,12 +19,12 @@ class DiffusionTrainingModule(torch.nn.Module):
 
     def trainable_modules(self):
         trainable_modules = filter(lambda p: p.requires_grad, self.parameters())
-        return trainable_modules  # noqa: RET504 – readability
+        return trainable_modules
 
     def trainable_param_names(self):
         trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.named_parameters()))
         trainable_param_names = {named_param[0] for named_param in trainable_param_names}
-        return trainable_param_names  # noqa: RET504 – readability
+        return trainable_param_names
 
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
         if lora_alpha is None:
@@ -44,7 +44,8 @@ class DiffusionTrainingModule(torch.nn.Module):
         for key, value in state_dict.items():
             if "lora_A.weight" in key or "lora_B.weight" in key:
                 new_key = key.replace("lora_A.weight", "lora_A.default.weight").replace(
-                    "lora_B.weight", "lora_B.default.weight"
+                    "lora_B.weight",
+                    "lora_B.default.weight",
                 )
                 new_state_dict[new_key] = value
             elif "lora_A.default.weight" in key or "lora_B.default.weight" in key:
@@ -109,7 +110,12 @@ class DiffusionTrainingModule(torch.nn.Module):
         return {}
 
     def parse_model_configs(
-        self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"
+        self,
+        model_paths,
+        model_id_with_origin_paths,
+        fp8_models=None,
+        offload_models=None,
+        device="cpu",
     ):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
         offload_models = [] if offload_models is None else offload_models.split(",")
@@ -118,7 +124,9 @@ class DiffusionTrainingModule(torch.nn.Module):
             model_paths = json.loads(model_paths)
             for path in model_paths:
                 vram_config = self.parse_vram_config(
-                    fp8=path in fp8_models, offload=path in offload_models, device=device
+                    fp8=path in fp8_models,
+                    offload=path in offload_models,
+                    device=device,
                 )
                 model_configs.append(ModelConfig(path=path, **vram_config))
         if model_id_with_origin_paths is not None:
@@ -132,8 +140,10 @@ class DiffusionTrainingModule(torch.nn.Module):
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
                 model_configs.append(
                     ModelConfig(
-                        model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, **vram_config
-                    )
+                        model_id=config.model_id,
+                        origin_file_pattern=config.origin_file_pattern,
+                        **vram_config,
+                    ),
                 )
         return model_configs
 
@@ -144,7 +154,7 @@ class DiffusionTrainingModule(torch.nn.Module):
             return ModelConfig(path=model_id_with_origin_path)
         if ":" not in model_id_with_origin_path:
             raise ValueError(
-                f"Failed to parse model config: {model_id_with_origin_path}. This is neither a valid path nor in the format of `model_id/origin_file_pattern`."
+                f"Failed to parse model config: {model_id_with_origin_path}. This is neither a valid path nor in the format of `model_id/origin_file_pattern`.",
             )
         split_id = model_id_with_origin_path.rfind(":")
         model_id = model_id_with_origin_path[:split_id]
@@ -216,7 +226,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         if lora_base_model is not None and not task.endswith(":data_process"):
             if (not hasattr(pipe, lora_base_model)) or getattr(pipe, lora_base_model) is None:
                 print(
-                    f"No {lora_base_model} models in the pipeline. We cannot patch LoRA on the model. If this occurs during the data processing stage, it is normal."
+                    f"No {lora_base_model} models in the pipeline. We cannot patch LoRA on the model. If this occurs during the data processing stage, it is normal.",
                 )
                 return
             model = self.add_lora_to_model(

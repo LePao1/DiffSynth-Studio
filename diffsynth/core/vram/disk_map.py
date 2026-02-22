@@ -15,7 +15,7 @@ class SafetensorsCompatibleTensor:
 class SafetensorsCompatibleBinaryLoader:
     def __init__(self, path, device):
         print(
-            "Detected non-safetensors files, which may cause slower loading. It's recommended to convert it to a safetensors file."
+            "Detected non-safetensors files, which may cause slower loading. It's recommended to convert it to a safetensors file.",
         )
         self.state_dict = torch.load(path, weights_only=True, map_location=device)
 
@@ -42,7 +42,7 @@ class DiskMap:
         self.flush_files()
         self.name_map = {}
         for file_id, file in enumerate(self.files):
-            for name in file.keys():  # noqa: SIM118 - safetensors file handle
+            for name in file:
                 self.name_map[name] = file_id
         self.rename_dict = self.fetch_rename_dict(state_dict_converter)
 
@@ -77,12 +77,9 @@ class DiskMap:
     def fetch_rename_dict(self, state_dict_converter):
         if state_dict_converter is None:
             return None
-        state_dict = {}
-        for file in self.files:
-            for name in file.keys():  # noqa: SIM118 - safetensors file handle
-                state_dict[name] = name
+        state_dict = {name: name for file in self.files for name in file}
         state_dict = state_dict_converter(state_dict)
-        return state_dict  # noqa: RET504 – readability
+        return state_dict
 
     def __iter__(self):
         if self.rename_dict is not None:

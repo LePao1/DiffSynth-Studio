@@ -91,7 +91,7 @@ def FluxDiTStateDictConverter(state_dict):
     return state_dict_
 
 
-def FluxDiTStateDictConverterFromDiffusers(state_dict):  # noqa: C901 – inherent complexity
+def FluxDiTStateDictConverterFromDiffusers(state_dict):
     global_rename_dict = {
         "context_embedder": "context_embedder",
         "x_embedder": "x_embedder",
@@ -138,7 +138,7 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):  # noqa: C901 – inhere
     state_dict_ = {}
     for name in state_dict:
         param = state_dict[name]
-        if name.endswith(".weight") or name.endswith(".bias"):
+        if name.endswith((".weight", ".bias")):
             suffix = ".weight" if name.endswith(".weight") else ".bias"
             prefix = name[: -len(suffix)]
             if prefix in global_rename_dict:
@@ -150,14 +150,14 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):  # noqa: C901 – inhere
                 names[0] = "blocks"
                 middle = ".".join(names[2:])
                 if middle in rename_dict:
-                    name_ = ".".join(names[:2] + [rename_dict[middle]] + [suffix[1:]])
+                    name_ = ".".join([*names[:2], rename_dict[middle], suffix[1:]])
                     state_dict_[name_] = param
             elif prefix.startswith("single_transformer_blocks."):
                 names = prefix.split(".")
                 names[0] = "single_blocks"
                 middle = ".".join(names[2:])
                 if middle in rename_dict_single:
-                    name_ = ".".join(names[:2] + [rename_dict_single[middle]] + [suffix[1:]])
+                    name_ = ".".join([*names[:2], rename_dict_single[middle], suffix[1:]])
                     state_dict_[name_] = param
                 else:
                     pass
@@ -168,7 +168,9 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):  # noqa: C901 – inhere
             mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."))
             if mlp is None:
                 mlp = torch.zeros(
-                    4 * state_dict_[name].shape[0], *state_dict_[name].shape[1:], dtype=state_dict_[name].dtype
+                    4 * state_dict_[name].shape[0],
+                    *state_dict_[name].shape[1:],
+                    dtype=state_dict_[name].dtype,
                 )
             else:
                 state_dict_.pop(name.replace(".a_to_q.", ".proj_in_besides_attn."))

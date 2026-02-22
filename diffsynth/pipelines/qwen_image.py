@@ -22,7 +22,7 @@ from ..utils.lora.merge import merge_lora
 
 
 class QwenImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -61,11 +61,11 @@ class QwenImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
-        model_configs: list[ModelConfig] = None,
-        tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),  # noqa: B008 – public API default
+        device: str | torch.device = get_device_type(),
+        model_configs: list[ModelConfig] | None = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = None,
-        vram_limit: float = None,
+        vram_limit: float | None = None,
     ):
         if model_configs is None:
             model_configs = []
@@ -78,7 +78,7 @@ class QwenImagePipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("qwen_image_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_vae")
         pipe.blockwise_controlnet = QwenImageBlockwiseMultiControlNet(
-            model_pool.fetch_model("qwen_image_blockwise_controlnet", index="all")
+            model_pool.fetch_model("qwen_image_blockwise_controlnet", index="all"),
         )
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
@@ -112,22 +112,22 @@ class QwenImagePipeline(BasePipeline):
         denoising_strength: float = 1.0,
         # Inpaint
         inpaint_mask: Image.Image = None,
-        inpaint_blur_size: int = None,
-        inpaint_blur_sigma: float = None,
+        inpaint_blur_size: int | None = None,
+        inpaint_blur_sigma: float | None = None,
         # Shape
         height: int = 1328,
         width: int = 1328,
         # Randomness
-        seed: int = None,
+        seed: int | None = None,
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
-        exponential_shift_mu: float = None,
+        exponential_shift_mu: float | None = None,
         # Blockwise ControlNet
-        blockwise_controlnet_inputs: list[ControlNetInput] = None,
+        blockwise_controlnet_inputs: list[ControlNetInput] | None = None,
         # EliGen
-        eligen_entity_prompts: list[str] = None,
-        eligen_entity_masks: list[Image.Image] = None,
+        eligen_entity_prompts: list[str] | None = None,
+        eligen_entity_masks: list[Image.Image] | None = None,
         eligen_enable_on_negative: bool = False,
         # Qwen-Image-Edit
         edit_image: Image.Image = None,
@@ -137,7 +137,7 @@ class QwenImagePipeline(BasePipeline):
         zero_cond_t: bool = False,
         # Qwen-Image-Layered
         layer_input_image: Image.Image = None,
-        layer_num: int = None,
+        layer_num: int | None = None,
         # In-context control
         context_image: Image.Image = None,
         # Tile
@@ -191,7 +191,11 @@ class QwenImagePipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
-                unit, self, inputs_shared, inputs_posi, inputs_nega
+                unit,
+                self,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
             )
 
         # Denoise
@@ -210,13 +214,20 @@ class QwenImagePipeline(BasePipeline):
                 progress_id=progress_id,
             )
             inputs_shared["latents"] = self.step(
-                self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared
+                self.scheduler,
+                progress_id=progress_id,
+                noise_pred=noise_pred,
+                **inputs_shared,
             )
 
         # Decode
         self.load_models_to_device(["vae"])
         image = self.vae.decode(
-            inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+            inputs_shared["latents"],
+            device=self.device,
+            tiled=tiled,
+            tile_size=tile_size,
+            tile_stride=tile_stride,
         )
         if layer_num is None:
             image = self.vae_output_to_image(image)
@@ -287,7 +298,10 @@ class QwenImageUnit_NoiseInitializer(PipelineUnit):
     def process(self, pipe: QwenImagePipeline, height, width, seed, rand_device, layer_num):
         if layer_num is None:
             noise = pipe.generate_noise(
-                (1, 16, height // 8, width // 8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype
+                (1, 16, height // 8, width // 8),
+                seed=seed,
+                rand_device=rand_device,
+                rand_torch_dtype=pipe.torch_dtype,
             )
         else:
             noise = pipe.generate_noise(
@@ -354,7 +368,9 @@ class QwenImageUnit_Inpaint(PipelineUnit):
         if inpaint_mask is None:
             return {}
         inpaint_mask = pipe.preprocess_image(
-            inpaint_mask.convert("RGB").resize((width // 8, height // 8)), min_value=0, max_value=1
+            inpaint_mask.convert("RGB").resize((width // 8, height // 8)),
+            min_value=0,
+            max_value=1,
         )
         inpaint_mask = inpaint_mask.mean(dim=1, keepdim=True)
         if inpaint_blur_size is not None and inpaint_blur_sigma is not None:
@@ -381,7 +397,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result  # noqa: RET504 – readability
+        return split_result
 
     def calculate_dimensions(self, target_area, ratio):
         width = math.sqrt(target_area * ratio)
@@ -399,11 +415,15 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         drop_idx = 34
         txt = [template.format(e) for e in prompt]
         model_inputs = pipe.tokenizer(
-            txt, max_length=4096 + drop_idx, padding=True, truncation=True, return_tensors="pt"
+            txt,
+            max_length=4096 + drop_idx,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
         ).to(pipe.device)
         if model_inputs.input_ids.shape[1] >= 1024:
             print(
-                f"Warning!!! QwenImage model was trained on prompts up to 512 tokens. Current prompt requires {model_inputs['input_ids'].shape[1] - drop_idx} tokens, which may lead to unpredictable behavior."
+                f"Warning!!! QwenImage model was trained on prompts up to 512 tokens. Current prompt requires {model_inputs['input_ids'].shape[1] - drop_idx} tokens, which may lead to unpredictable behavior.",
             )
         hidden_states = pipe.text_encoder(
             input_ids=model_inputs.input_ids,
@@ -412,7 +432,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states  # noqa: RET504 – readability
+        return split_hidden_states
 
     def encode_prompt_edit(self, pipe: QwenImagePipeline, prompt, edit_image):
         template = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n<|im_start|>assistant\n"
@@ -428,7 +448,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states  # noqa: RET504 – readability
+        return split_hidden_states
 
     def encode_prompt_edit_multi(self, pipe: QwenImagePipeline, prompt, edit_image):
         template = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
@@ -447,7 +467,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         )[-1]
         split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
-        return split_hidden_states  # noqa: RET504 – readability
+        return split_hidden_states
 
     def process(self, pipe: QwenImagePipeline, prompt, edit_image=None) -> dict:
         pipe.load_models_to_device(self.onload_model_names)
@@ -462,10 +482,10 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
             attn_mask_list = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden_states]
             max_seq_len = max([e.size(0) for e in split_hidden_states])
             prompt_embeds = torch.stack(
-                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states]
+                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states],
             )
             encoder_attention_mask = torch.stack(
-                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list]
+                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list],
             )
             prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
             return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
@@ -486,7 +506,7 @@ class QwenImageUnit_EntityControl(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result  # noqa: RET504 – readability
+        return split_result
 
     def get_prompt_emb(self, pipe: QwenImagePipeline, prompt) -> dict:
         if pipe.text_encoder is not None:
@@ -495,7 +515,11 @@ class QwenImageUnit_EntityControl(PipelineUnit):
             drop_idx = 34
             txt = [template.format(e) for e in prompt]
             txt_tokens = pipe.tokenizer(
-                txt, max_length=1024 + drop_idx, padding=True, truncation=True, return_tensors="pt"
+                txt,
+                max_length=1024 + drop_idx,
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
             ).to(pipe.device)
             hidden_states = pipe.text_encoder(
                 input_ids=txt_tokens.input_ids,
@@ -508,10 +532,10 @@ class QwenImageUnit_EntityControl(PipelineUnit):
             attn_mask_list = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden_states]
             max_seq_len = max([e.size(0) for e in split_hidden_states])
             prompt_embeds = torch.stack(
-                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states]
+                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states],
             )
             encoder_attention_mask = torch.stack(
-                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list]
+                [torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list],
             )
             prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
             return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
@@ -550,7 +574,11 @@ class QwenImageUnit_EntityControl(PipelineUnit):
         cfg_scale,
     ):
         entity_prompt_emb_posi, entity_prompt_emb_posi_mask, entity_masks_posi = self.prepare_entity_inputs(
-            pipe, eligen_entity_prompts, eligen_entity_masks, width, height
+            pipe,
+            eligen_entity_prompts,
+            eligen_entity_masks,
+            width,
+            height,
         )
         if enable_eligen_on_negative and cfg_scale != 1.0:
             entity_prompt_emb_nega = [prompt_emb_nega["prompt_emb"]] * len(entity_prompt_emb_posi)
@@ -613,7 +641,7 @@ class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
         mask = mask.mean(dim=1, keepdim=True)
         mask = 1 - torch.nn.functional.interpolate(mask, size=latents.shape[-2:])
         latents = torch.concat([latents, mask], dim=1)
-        return latents  # noqa: RET504 – readability
+        return latents
 
     def apply_controlnet_mask_on_image(self, pipe, image, mask):
         mask = mask.resize(image.size)
@@ -621,7 +649,7 @@ class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
         image = np.array(image)
         image[mask > 0] = 0
         image = Image.fromarray(image)
-        return image  # noqa: RET504 – readability
+        return image
 
     def process(
         self,
@@ -669,12 +697,19 @@ class QwenImageUnit_EditImageEmbedder(PipelineUnit):
 
     def edit_image_auto_resize(self, edit_image):
         calculated_width, calculated_height = self.calculate_dimensions(
-            1024 * 1024, edit_image.size[0] / edit_image.size[1]
+            1024 * 1024,
+            edit_image.size[0] / edit_image.size[1],
         )
         return edit_image.resize((calculated_width, calculated_height))
 
     def process(
-        self, pipe: QwenImagePipeline, edit_image, tiled, tile_size, tile_stride, edit_image_auto_resize=False
+        self,
+        pipe: QwenImagePipeline,
+        edit_image,
+        tiled,
+        tile_size,
+        tile_stride,
+        edit_image_auto_resize=False,
     ):
         if edit_image is None:
             return {}
@@ -712,7 +747,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
         valid_lengths = bool_mask.sum(dim=1)
         selected = hidden_states[bool_mask]
         split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result  # noqa: RET504 – readability
+        return split_result
 
     def encode_prompt_edit(self, pipe: QwenImagePipeline, prompt, edit_image):
         prompt = [prompt]
@@ -731,7 +766,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
         split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
         max_seq_len = max([e.size(0) for e in split_hidden_states])
         prompt_embeds = torch.stack(
-            [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states]
+            [torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states],
         )
         prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
         return prompt_embeds.view(1, -1)
@@ -743,7 +778,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs  # noqa: RET504 – readability
+        return embs
 
     def encode_images_using_dinov3(self, pipe: QwenImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
@@ -752,7 +787,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs  # noqa: RET504 – readability
+        return embs
 
     def encode_images_using_qwenvl(self, pipe: QwenImagePipeline, images: list[Image.Image], highres=False):
         pipe.load_models_to_device(["text_encoder"])
@@ -761,7 +796,7 @@ class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image) if highres else self.processor_lowres(image)
             embs.append(self.encode_prompt_edit(pipe, prompt="", edit_image=image))
         embs = torch.stack(embs)
-        return embs  # noqa: RET504 – readability
+        return embs
 
     def encode_images(self, pipe: QwenImagePipeline, images: list[Image.Image]):
         if images is None:
@@ -800,8 +835,7 @@ class QwenImageUnit_Image2LoRADecode(PipelineUnit):
         loras = []
         if pipe.image2lora_style is not None:
             pipe.load_models_to_device(["image2lora_style"])
-            for x in image2lora_x:
-                loras.append(pipe.image2lora_style(x=x, residual=None))
+            loras.extend(pipe.image2lora_style(x=x, residual=None) for x in image2lora_x)
         if pipe.image2lora_coarse is not None:
             pipe.load_models_to_device(["image2lora_coarse"])
             for x, residual in zip(image2lora_x, image2lora_residual, strict=False):
@@ -827,7 +861,8 @@ class QwenImageUnit_ContextImageEmbedder(PipelineUnit):
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         context_image = pipe.preprocess_image(context_image.resize((width, height))).to(
-            device=pipe.device, dtype=pipe.torch_dtype
+            device=pipe.device,
+            dtype=pipe.torch_dtype,
         )
         context_latents = pipe.vae.encode(context_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         return {"context_latents": context_latents}
@@ -870,7 +905,13 @@ def model_fn_qwen_image(
     timestep = timestep / 1000
 
     image = rearrange(
-        latents, "(B N) C (H P) (W Q) -> B (N H W) (C P Q)", H=height // 16, W=width // 16, P=2, Q=2, N=layer_num
+        latents,
+        "(B N) C (H P) (W Q) -> B (N H W) (C P Q)",
+        H=height // 16,
+        W=width // 16,
+        P=2,
+        Q=2,
+        N=layer_num,
     )
     image_seq_len = image.shape[1]
 
@@ -892,11 +933,11 @@ def model_fn_qwen_image(
             rearrange(e, "B C (H P) (W Q) -> B (H W) (C P Q)", H=e.shape[2] // 2, W=e.shape[3] // 2, P=2, Q=2)
             for e in edit_latents_list
         ]
-        image = torch.cat([image] + edit_image, dim=1)
+        image = torch.cat([image, *edit_image], dim=1)
     if layer_input_latents is not None:
         layer_num = layer_num + 1
         img_shapes += [
-            (layer_input_latents.shape[0], layer_input_latents.shape[2] // 2, layer_input_latents.shape[3] // 2)
+            (layer_input_latents.shape[0], layer_input_latents.shape[2] // 2, layer_input_latents.shape[3] // 2),
         ]
         layer_input_latents = rearrange(layer_input_latents, "B C (H P) (W Q) -> B (H W) (C P Q)", P=2, Q=2)
         image = torch.cat([image, layer_input_latents], dim=1)
@@ -942,7 +983,8 @@ def model_fn_qwen_image(
 
     if blockwise_controlnet_conditioning is not None:
         blockwise_controlnet_conditioning = blockwise_controlnet.preprocess(
-            blockwise_controlnet_inputs, blockwise_controlnet_conditioning
+            blockwise_controlnet_inputs,
+            blockwise_controlnet_conditioning,
         )
 
     for block_id, block in enumerate(dit.transformer_blocks):
@@ -977,6 +1019,12 @@ def model_fn_qwen_image(
     image = image[:, :image_seq_len]
 
     latents = rearrange(
-        image, "B (N H W) (C P Q) -> (B N) C (H P) (W Q)", H=height // 16, W=width // 16, P=2, Q=2, B=1
+        image,
+        "B (N H W) (C P Q) -> (B N) C (H P) (W Q)",
+        H=height // 16,
+        W=width // 16,
+        P=2,
+        Q=2,
+        B=1,
     )
-    return latents  # noqa: RET504 – readability
+    return latents

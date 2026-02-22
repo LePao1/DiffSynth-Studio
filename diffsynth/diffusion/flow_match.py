@@ -8,7 +8,13 @@ class FlowMatchScheduler:
     def __init__(
         self,
         template: Literal[
-            "FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning"
+            "FLUX.1",
+            "Wan",
+            "Qwen-Image",
+            "FLUX.2",
+            "Z-Image",
+            "LTX-2",
+            "Qwen-Image-Lightning",
         ] = "FLUX.1",
     ):
         self.set_timesteps_fn = {
@@ -51,11 +57,14 @@ class FlowMatchScheduler:
         m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
         b = base_shift - m * base_seq_len
         mu = image_seq_len * m + b
-        return mu  # noqa: RET504 – readability
+        return mu
 
     @staticmethod
     def set_timesteps_qwen_image(
-        num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None
+        num_inference_steps=100,
+        denoising_strength=1.0,
+        exponential_shift_mu=None,
+        dynamic_shift_len=None,
     ):
         sigma_min = 0.0
         sigma_max = 1.0
@@ -82,7 +91,10 @@ class FlowMatchScheduler:
 
     @staticmethod
     def set_timesteps_qwen_image_lightning(
-        num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None
+        num_inference_steps=100,
+        denoising_strength=1.0,
+        exponential_shift_mu=None,
+        dynamic_shift_len=None,
     ):
         sigma_min = 0.0
         sigma_max = 1.0
@@ -97,7 +109,9 @@ class FlowMatchScheduler:
             mu = exponential_shift_mu
         elif dynamic_shift_len is not None:
             mu = FlowMatchScheduler._calculate_shift_qwen_image(
-                dynamic_shift_len, base_shift=base_shift, max_shift=max_shift
+                dynamic_shift_len,
+                base_shift=base_shift,
+                max_shift=max_shift,
             )
         else:
             mu = 0.8
@@ -160,7 +174,11 @@ class FlowMatchScheduler:
 
     @staticmethod
     def set_timesteps_ltx2(
-        num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, terminal=0.1, special_case=None
+        num_inference_steps=100,
+        denoising_strength=1.0,
+        dynamic_shift_len=None,
+        terminal=0.1,
+        special_case=None,
     ):
         num_train_timesteps = 1000
         if special_case == "stage2":
@@ -217,12 +235,9 @@ class FlowMatchScheduler:
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
-        if to_final or timestep_id + 1 >= len(self.timesteps):  # noqa: SIM108 – readability
-            sigma_ = 0
-        else:
-            sigma_ = self.sigmas[timestep_id + 1]
+        sigma_ = 0 if to_final or timestep_id + 1 >= len(self.timesteps) else self.sigmas[timestep_id + 1]
         prev_sample = sample + model_output * (sigma_ - sigma)
-        return prev_sample  # noqa: RET504 – readability
+        return prev_sample
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
         if isinstance(timestep, torch.Tensor):
@@ -230,7 +245,7 @@ class FlowMatchScheduler:
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         model_output = (sample - sample_stablized) / sigma
-        return model_output  # noqa: RET504 – readability
+        return model_output
 
     def add_noise(self, original_samples, noise, timestep):
         if isinstance(timestep, torch.Tensor):
@@ -238,13 +253,13 @@ class FlowMatchScheduler:
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         sample = (1 - sigma) * original_samples + sigma * noise
-        return sample  # noqa: RET504 – readability
+        return sample
 
     def training_target(self, sample, noise, timestep):
         target = noise - sample
-        return target  # noqa: RET504 – readability
+        return target
 
     def training_weight(self, timestep):
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
         weights = self.linear_timesteps_weights[timestep_id]
-        return weights  # noqa: RET504 – readability
+        return weights

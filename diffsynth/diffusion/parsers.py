@@ -4,14 +4,23 @@ import argparse
 def add_dataset_base_config(parser: argparse.ArgumentParser):
     parser.add_argument("--dataset_base_path", type=str, default="", required=True, help="Base path of the dataset.")
     parser.add_argument(
-        "--dataset_metadata_path", type=str, default=None, help="Path to the metadata file of the dataset."
+        "--dataset_metadata_path",
+        type=str,
+        default=None,
+        help="Path to the metadata file of the dataset.",
     )
     parser.add_argument(
-        "--dataset_repeat", type=int, default=1, help="Number of times to repeat the dataset per epoch."
+        "--dataset_repeat",
+        type=int,
+        default=1,
+        help="Number of times to repeat the dataset per epoch.",
     )
     parser.add_argument("--dataset_num_workers", type=int, default=0, help="Number of workers for data loading.")
     parser.add_argument(
-        "--data_file_keys", type=str, default="image,video", help="Data file keys in the metadata. Comma-separated."
+        "--data_file_keys",
+        type=str,
+        default="image,video",
+        help="Data file keys in the metadata. Comma-separated.",
     )
     return parser
 
@@ -77,7 +86,9 @@ def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
     parser.add_argument("--fp8_models", default=None, help="Models with FP8 precision, comma-separated.")
     parser.add_argument(
-        "--offload_models", default=None, help="Models with offload, comma-separated. Only used in splited training."
+        "--offload_models",
+        default=None,
+        help="Models with offload, comma-separated. Only used in splited training.",
     )
     return parser
 
@@ -86,7 +97,10 @@ def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
     parser.add_argument(
-        "--trainable_models", type=str, default=None, help="Models to train, e.g., dit, vae, text_encoder."
+        "--trainable_models",
+        type=str,
+        default=None,
+        help="Models to train, e.g., dit, vae, text_encoder.",
     )
     parser.add_argument(
         "--find_unused_parameters",
@@ -114,7 +128,10 @@ def add_output_config(parser: argparse.ArgumentParser):
 def add_lora_config(parser: argparse.ArgumentParser):
     parser.add_argument("--lora_base_model", type=str, default=None, help="Which model LoRA is added to.")
     parser.add_argument(
-        "--lora_target_modules", type=str, default="q,k,v,o,ffn.0,ffn.2", help="Which layers LoRA is added to."
+        "--lora_target_modules",
+        type=str,
+        default="q,k,v,o,ffn.0,ffn.2",
+        help="Which layers LoRA is added to.",
     )
     parser.add_argument("--lora_rank", type=int, default=32, help="Rank of LoRA.")
     parser.add_argument(
@@ -157,4 +174,4 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_output_config(parser)
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
-    return parser  # noqa: RET504 – readability
+    return parser

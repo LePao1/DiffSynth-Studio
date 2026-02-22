@@ -22,7 +22,7 @@ from ..utils.lora import merge_lora
 
 
 class ZImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -56,12 +56,13 @@ class ZImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
-        model_configs: list[ModelConfig] = None,
-        tokenizer_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
-            model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"
+        device: str | torch.device = get_device_type(),
+        model_configs: list[ModelConfig] | None = None,
+        tokenizer_config: ModelConfig = ModelConfig(
+            model_id="Tongyi-MAI/Z-Image-Turbo",
+            origin_file_pattern="tokenizer/",
         ),
-        vram_limit: float = None,
+        vram_limit: float | None = None,
         enable_npu_patch: bool = True,
     ):
         if model_configs is None:
@@ -107,16 +108,16 @@ class ZImagePipeline(BasePipeline):
         height: int = 1024,
         width: int = 1024,
         # Randomness
-        seed: int = None,
+        seed: int | None = None,
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 8,
-        sigma_shift: float = None,
+        sigma_shift: float | None = None,
         # ControlNet
-        controlnet_inputs: list[ControlNetInput] = None,
+        controlnet_inputs: list[ControlNetInput] | None = None,
         # Image to LoRA
-        image2lora_images: list[Image.Image] = None,
-        positive_only_lora: dict[str, torch.Tensor] = None,
+        image2lora_images: list[Image.Image] | None = None,
+        positive_only_lora: dict[str, torch.Tensor] | None = None,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
@@ -147,7 +148,11 @@ class ZImagePipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
-                unit, self, inputs_shared, inputs_posi, inputs_nega
+                unit,
+                self,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
             )
 
         # Denoise
@@ -166,7 +171,10 @@ class ZImagePipeline(BasePipeline):
                 progress_id=progress_id,
             )
             inputs_shared["latents"] = self.step(
-                self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared
+                self.scheduler,
+                progress_id=progress_id,
+                noise_pred=noise_pred,
+                **inputs_shared,
             )
 
         # Decode
@@ -240,12 +248,7 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
             output_hidden_states=True,
         ).hidden_states[-2]
 
-        embeddings_list = []
-
-        for i in range(len(prompt_embeds)):
-            embeddings_list.append(prompt_embeds[i][prompt_masks[i]])
-
-        return embeddings_list
+        return [prompt_embeds[i][prompt_masks[i]] for i in range(len(prompt_embeds))]
 
     def encode_prompt_omni(
         self,
@@ -302,10 +305,8 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
         embeddings_list = []
         start_idx = 0
         for i in range(len(prompt_list_lengths)):
-            batch_embeddings = []
             end_idx = start_idx + prompt_list_lengths[i]
-            for j in range(start_idx, end_idx):
-                batch_embeddings.append(prompt_embeds[j][prompt_masks[j]])
+            batch_embeddings = [prompt_embeds[j][prompt_masks[j]] for j in range(start_idx, end_idx)]
             embeddings_list.append(batch_embeddings)
             start_idx = end_idx
 
@@ -333,7 +334,10 @@ class ZImageUnit_NoiseInitializer(PipelineUnit):
 
     def process(self, pipe: ZImagePipeline, height, width, seed, rand_device):
         noise = pipe.generate_noise(
-            (1, 16, height // 8, width // 8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype
+            (1, 16, height // 8, width // 8),
+            seed=seed,
+            rand_device=rand_device,
+            rand_torch_dtype=pipe.torch_dtype,
         )
         return {"noise": noise}
 
@@ -380,7 +384,9 @@ class ZImageUnit_EditImageAutoResize(PipelineUnit):
 class ZImageUnit_EditImageEmbedderSiglip(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("edit_image",), output_params=("image_embeds",), onload_model_names=("image_encoder",)
+            input_params=("edit_image",),
+            output_params=("image_embeds",),
+            onload_model_names=("image_encoder",),
         )
 
     def process(self, pipe: ZImagePipeline, edit_image):
@@ -389,16 +395,16 @@ class ZImageUnit_EditImageEmbedderSiglip(PipelineUnit):
         pipe.load_models_to_device(self.onload_model_names)
         if not isinstance(edit_image, list):
             edit_image = [edit_image]
-        image_emb = []
-        for image_ in edit_image:
-            image_emb.append(pipe.image_encoder(image_, device=pipe.device))
+        image_emb = [pipe.image_encoder(image_, device=pipe.device) for image_ in edit_image]
         return {"image_embeds": image_emb}
 
 
 class ZImageUnit_EditImageEmbedderVAE(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("edit_image",), output_params=("image_latents",), onload_model_names=("vae_encoder",)
+            input_params=("edit_image",),
+            output_params=("image_latents",),
+            onload_model_names=("vae_encoder",),
         )
 
     def process(self, pipe: ZImagePipeline, edit_image):
@@ -446,7 +452,9 @@ class ZImageUnit_PAIControlNet(PipelineUnit):
             inpaint_image = pipe.preprocess_image(inpaint_image)
             inpaint_image = inpaint_image * (inpaint_mask < 0.5)
             inpaint_mask = torch.nn.functional.interpolate(
-                1 - inpaint_mask, (height // 8, width // 8), mode="nearest"
+                1 - inpaint_mask,
+                (height // 8, width // 8),
+                mode="nearest",
             )[:, :1]
         else:
             inpaint_mask = torch.zeros((1, 1, height // 8, width // 8), dtype=pipe.torch_dtype, device=pipe.device)
@@ -510,7 +518,7 @@ def model_fn_z_image(
     )[0]
     model_output = -model_output
     model_output = rearrange(model_output, "C B H W -> B C H W")
-    return model_output  # noqa: RET504 – readability
+    return model_output
 
 
 class ZImageUnit_Image2LoRAEncode(PipelineUnit):
@@ -534,7 +542,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs  # noqa: RET504 – readability
+        return embs
 
     def encode_images_using_dinov3(self, pipe: ZImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
@@ -543,7 +551,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             image = self.processor_highres(image)
             embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
         embs = torch.stack(embs)
-        return embs  # noqa: RET504 – readability
+        return embs
 
     def encode_images(self, pipe: ZImagePipeline, images: list[Image.Image]):
         if images is None:
@@ -553,7 +561,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
         embs_siglip2 = self.encode_images_using_siglip2(pipe, images)
         embs_dinov3 = self.encode_images_using_dinov3(pipe, images)
         x = torch.concat([embs_siglip2, embs_dinov3], dim=-1)
-        return x  # noqa: RET504 – readability
+        return x
 
     def process(self, pipe: ZImagePipeline, image2lora_images):
         if image2lora_images is None:
@@ -576,8 +584,7 @@ class ZImageUnit_Image2LoRADecode(PipelineUnit):
         loras = []
         if pipe.image2lora_style is not None:
             pipe.load_models_to_device(["image2lora_style"])
-            for x in image2lora_x:
-                loras.append(pipe.image2lora_style(x=x, residual=None))
+            loras.extend(pipe.image2lora_style(x=x, residual=None) for x in image2lora_x)
         lora = merge_lora(loras, alpha=1 / len(image2lora_x))
         return {"lora": lora}
 
@@ -691,16 +698,15 @@ def model_fn_z_image_turbo(
             freqs_cis=unified_freqs_cis,
             adaln_input=t_noisy,
         )
-        if control_context is not None:  # noqa: SIM102 – readability
-            if layer_id in controlnet.control_layers_mapping:
-                unified = unified + hints[controlnet.control_layers_mapping[layer_id]] * control_scale
+        if control_context is not None and layer_id in controlnet.control_layers_mapping:
+            unified = unified + hints[controlnet.control_layers_mapping[layer_id]] * control_scale
 
     # Output
     unified = dit.all_final_layer["2-1"](unified, t_noisy)
     x = dit.unpatchify([unified[0]], patch_metadata.get("x_size"))[0]
     x = rearrange(x, "C B H W -> B C H W")
     x = -x
-    return x  # noqa: RET504 – readability
+    return x
 
 
 def apply_npu_patch(enable_npu_patch: bool = True):

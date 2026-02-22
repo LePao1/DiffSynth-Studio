@@ -84,7 +84,7 @@ class FluxLoRALoader(GeneralLoRALoader):
     def fuse_lora_to_base_model(self, model: torch.nn.Module, state_dict_lora, alpha=1.0):
         super().fuse_lora_to_base_model(model, state_dict_lora, alpha)
 
-    def convert_state_dict(self, state_dict):  # noqa: C901 – inherent complexity
+    def convert_state_dict(self, state_dict):
 
         def guess_block_id(name, model_resource):
             if model_resource == "civitai":
@@ -121,7 +121,7 @@ class FluxLoRALoader(GeneralLoRALoader):
                         if name_ in state_dict:
                             lora_alpha = param.item() / state_dict[name_].shape[0]
                             lora_alpha = math.sqrt(lora_alpha)
-                            return lora_alpha  # noqa: RET504 – readability
+                            return lora_alpha
 
             return 1
 

@@ -1,7 +1,5 @@
 """Version information for diffsynth."""
 
-import re
-import sys
 
 
 def _get_version():
@@ -20,21 +18,11 @@ def _get_version():
 
         pyproject_path = os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
 
-        if sys.version_info >= (3, 11):  # noqa: UP036 – project supports Python 3.10 which lacks tomllib
-            import tomllib
+        import tomllib
 
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-                return data.get("project", {}).get("version", "0.0.0")
-        else:
-            # For Python < 3.11, read and parse manually
-            with open(pyproject_path, encoding="utf-8") as f:
-                content = f.read()
-                # Simple regex to extract version from [project] section
-                match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
-                if match:
-                    return match.group(1)
-                return "0.0.0"
+        with open(pyproject_path, "rb") as f:
+            data = tomllib.load(f)
+            return data.get("project", {}).get("version", "0.0.0")
     except Exception:
         pass
 

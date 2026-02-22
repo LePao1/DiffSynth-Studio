@@ -321,7 +321,7 @@ def FluxVAEEncoderStateDictConverterDiffusers(state_dict):
             while block_id[block_type] < len(block_types) and block_types[block_id[block_type]] != block_type:
                 block_id[block_type] += 1
             block_type_with_id = ".".join(names[:5])
-            names = ["blocks", str(block_id[block_type])] + names[5:]
+            names = ["blocks", str(block_id[block_type]), *names[5:]]
             rename_dict[name] = ".".join(names)
 
     # Convert state_dict
@@ -393,7 +393,7 @@ def FluxVAEDecoderStateDictConverterDiffusers(state_dict):
             while block_id[block_type] < len(block_types) and block_types[block_id[block_type]] != block_type:
                 block_id[block_type] += 1
             block_type_with_id = ".".join(names[:5])
-            names = ["blocks", str(block_id[block_type])] + names[5:]
+            names = ["blocks", str(block_id[block_type]), *names[5:]]
             rename_dict[name] = ".".join(names)
 
     # Convert state_dict

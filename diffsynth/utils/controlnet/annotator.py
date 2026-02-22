@@ -3,7 +3,16 @@ from typing import Literal, TypeAlias
 from diffsynth.core.device.npu_compatible_device import get_device_type
 
 Processor_id: TypeAlias = Literal[
-    "canny", "depth", "softedge", "lineart", "lineart_anime", "openpose", "normal", "tile", "none", "inpaint"
+    "canny",
+    "depth",
+    "softedge",
+    "lineart",
+    "lineart_anime",
+    "openpose",
+    "normal",
+    "tile",
+    "none",
+    "inpaint",
 ]
 
 
@@ -13,7 +22,7 @@ class Annotator:
         processor_id: Processor_id,
         model_path="models/Annotators",
         detect_resolution=None,
-        device=get_device_type(),  # noqa: B008 – public API default
+        device=get_device_type(),
         skip_processor=False,
     ):
         if not skip_processor:
@@ -68,7 +77,10 @@ class Annotator:
         if self.processor is not None:
             detect_resolution = self.detect_resolution if self.detect_resolution is not None else min(width, height)
             image = self.processor(
-                image, detect_resolution=detect_resolution, image_resolution=min(width, height), **kwargs
+                image,
+                detect_resolution=detect_resolution,
+                image_resolution=min(width, height),
+                **kwargs,
             )
         image = image.resize((width, height))
-        return image  # noqa: RET504 – readability
+        return image

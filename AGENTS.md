@@ -71,6 +71,9 @@ DiffSynth-Studio/
 # Install (uv + hatchling backend)
 uv sync
 
+# Activate virtual environment
+source .venv/bin/activate
+
 # Run example inference
 python examples/flux/model_inference/FLUX.1-dev.py
 
@@ -81,8 +84,8 @@ bash examples/qwen_image/model_training/lora/Qwen-Image.sh
 cd docs/en && make html
 
 # Lint
-uv ruff check diffsynth/
-uv ruff format diffsynth/
+uv run ruff check diffsynth/
+uv run ruff format diffsynth/
 
 # Build package
 uv build

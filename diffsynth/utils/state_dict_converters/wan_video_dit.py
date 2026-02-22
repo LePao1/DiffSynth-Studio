@@ -61,10 +61,10 @@ def WanVideoDiTFromDiffusers(state_dict):
         if name in rename_dict:
             state_dict_[rename_dict[name]] = state_dict[name]
         else:
-            name_ = ".".join(name.split(".")[:1] + ["0"] + name.split(".")[2:])
+            name_ = ".".join([*name.split(".")[:1], "0", *name.split(".")[2:]])
             if name_ in rename_dict:
                 name_ = rename_dict[name_]
-                name_ = ".".join(name_.split(".")[:1] + [name.split(".")[1]] + name_.split(".")[2:])
+                name_ = ".".join([*name_.split(".")[:1], name.split(".")[1], *name_.split(".")[2:]])
                 state_dict_[name_] = state_dict[name]
     return state_dict_
 

@@ -70,9 +70,9 @@ def WanVideoMotStateDictConverter(state_dict):
             if name.split(".")[1].isdigit():
                 block_id = int(name.split(".")[1])
                 name = name.replace(str(block_id), str(mot_layers_mapping[block_id]))
-            name_ = ".".join(name.split(".")[:1] + ["0"] + name.split(".")[2:])
+            name_ = ".".join([*name.split(".")[:1], "0", *name.split(".")[2:]])
             if name_ in rename_dict:
                 name_ = rename_dict[name_]
-                name_ = ".".join(name_.split(".")[:1] + [name.split(".")[1]] + name_.split(".")[2:])
+                name_ = ".".join([*name_.split(".")[:1], name.split(".")[1], *name_.split(".")[2:]])
                 state_dict_[name_] = param
     return state_dict_

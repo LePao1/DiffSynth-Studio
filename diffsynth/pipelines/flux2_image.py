@@ -18,7 +18,7 @@ from ..models.z_image_text_encoder import ZImageTextEncoder
 
 
 class Flux2ImagePipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -46,12 +46,13 @@ class Flux2ImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
-        model_configs: list[ModelConfig] = None,
-        tokenizer_config: ModelConfig = ModelConfig(  # noqa: B008 – public API default
-            model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"
+        device: str | torch.device = get_device_type(),
+        model_configs: list[ModelConfig] | None = None,
+        tokenizer_config: ModelConfig = ModelConfig(
+            model_id="black-forest-labs/FLUX.2-dev",
+            origin_file_pattern="tokenizer/",
         ),
-        vram_limit: float = None,
+        vram_limit: float | None = None,
     ):
         if model_configs is None:
             model_configs = []
@@ -90,7 +91,7 @@ class Flux2ImagePipeline(BasePipeline):
         height: int = 1024,
         width: int = 1024,
         # Randomness
-        seed: int = None,
+        seed: int | None = None,
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
@@ -98,7 +99,9 @@ class Flux2ImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         self.scheduler.set_timesteps(
-            num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=height // 16 * width // 16
+            num_inference_steps,
+            denoising_strength=denoising_strength,
+            dynamic_shift_len=height // 16 * width // 16,
         )
 
         # Parameters
@@ -123,7 +126,11 @@ class Flux2ImagePipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
-                unit, self, inputs_shared, inputs_posi, inputs_nega
+                unit,
+                self,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
             )
 
         # Denoise
@@ -142,7 +149,10 @@ class Flux2ImagePipeline(BasePipeline):
                 progress_id=progress_id,
             )
             inputs_shared["latents"] = self.step(
-                self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared
+                self.scheduler,
+                progress_id=progress_id,
+                noise_pred=noise_pred,
+                **inputs_shared,
             )
 
         # Decode
@@ -183,7 +193,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         )
         self.system_message = "You are an AI that reasons about image descriptions. You give structured responses focusing on object relationships, object attribution and actions without speculation."
 
-    def format_text_input(self, prompts: list[str], system_message: str = None):
+    def format_text_input(self, prompts: list[str], system_message: str | None = None):
         # Remove [IMG] tokens from prompts to avoid Pixtral validation issues
         # when truncation is enabled. The processor counts [IMG] tokens and fails
         # if the count changes after truncation.
@@ -208,9 +218,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         dtype: torch.dtype | None = None,
         device: torch.device | None = None,
         max_sequence_length: int = 512,
-        # fmt: off
         system_message: str = "You are an AI that reasons about image descriptions. You give structured responses focusing on object relationships, object attribution and actions without speculation.",
-        # fmt: on
         hidden_states_layers: list[int] = (10, 20, 30),
     ):
         dtype = text_encoder.dtype if dtype is None else dtype
@@ -252,7 +260,7 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         batch_size, num_channels, seq_len, hidden_dim = out.shape
         prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
 
-        return prompt_embeds  # noqa: RET504 – readability
+        return prompt_embeds
 
     def prepare_text_ids(
         self,
@@ -387,7 +395,7 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
 
         batch_size, num_channels, seq_len, hidden_dim = out.shape
         prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
-        return prompt_embeds  # noqa: RET504 – readability
+        return prompt_embeds
 
     def prepare_text_ids(
         self,
@@ -464,7 +472,10 @@ class Flux2Unit_NoiseInitializer(PipelineUnit):
 
     def process(self, pipe: Flux2ImagePipeline, height, width, seed, rand_device):
         noise = pipe.generate_noise(
-            (1, 128, height // 16, width // 16), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype
+            (1, 128, height // 16, width // 16),
+            seed=seed,
+            rand_device=rand_device,
+            rand_torch_dtype=pipe.torch_dtype,
         )
         noise = noise.reshape(1, 128, height // 16 * width // 16).permute(0, 2, 1)
         return {"noise": noise}
@@ -515,11 +526,12 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
             interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
         )
         image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
-        return image  # noqa: RET504 – readability
+        return image
 
     def edit_image_auto_resize(self, edit_image):
         calculated_width, calculated_height = self.calculate_dimensions(
-            1024 * 1024, edit_image.size[0] / edit_image.size[1]
+            1024 * 1024,
+            edit_image.size[0] / edit_image.size[1],
         )
         return self.crop_and_resize(edit_image, calculated_height, calculated_width)
 
@@ -538,7 +550,7 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
         image_latent_ids = torch.cat(image_latent_ids, dim=0)
         image_latent_ids = image_latent_ids.unsqueeze(0)
 
-        return image_latent_ids  # noqa: RET504 – readability
+        return image_latent_ids
 
     def process(self, pipe: Flux2ImagePipeline, edit_image, edit_image_auto_resize):
         if edit_image is None:
@@ -580,7 +592,7 @@ class Flux2Unit_ImageIDs(PipelineUnit):
         # Expand to batch: (B, H*W, 4)
         latent_ids = latent_ids.unsqueeze(0).expand(1, -1, -1)
 
-        return latent_ids  # noqa: RET504 – readability
+        return latent_ids
 
     def process(self, pipe: Flux2ImagePipeline, height, width):
         image_ids = self.prepare_latent_ids(height // 16, width // 16).to(pipe.device)
@@ -618,4 +630,4 @@ def model_fn_flux2(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     model_output = model_output[:, :image_seq_len]
-    return model_output  # noqa: RET504 – readability
+    return model_output

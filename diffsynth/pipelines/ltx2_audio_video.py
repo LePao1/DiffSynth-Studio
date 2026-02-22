@@ -25,7 +25,7 @@ from ..utils.data.media_io_ltx2 import ltx2_preprocess
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):  # noqa: B008 – public API default
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device,
             torch_dtype=torch_dtype,
@@ -64,11 +64,11 @@ class LTX2AudioVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str | torch.device = get_device_type(),  # noqa: B008 – public API default
-        model_configs: list[ModelConfig] = None,
-        tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),  # noqa: B008 – public API default
+        device: str | torch.device = get_device_type(),
+        model_configs: list[ModelConfig] | None = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
         stage2_lora_config: ModelConfig | None = None,
-        vram_limit: float = None,
+        vram_limit: float | None = None,
     ):
         if model_configs is None:
             model_configs = []
@@ -112,7 +112,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
             latent = self.video_vae_encoder.per_channel_statistics.normalize(latent)
             self.scheduler.set_timesteps(special_case="stage2")
             inputs_shared.update(
-                {k.replace("stage2_", ""): v for k, v in inputs_shared.items() if k.startswith("stage2_")}
+                {k.replace("stage2_", ""): v for k, v in inputs_shared.items() if k.startswith("stage2_")},
             )
             denoise_mask_video = 1.0
             if inputs_shared.get("input_images", None) is not None:
@@ -124,7 +124,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
                     latent.clone(),
                 )
                 inputs_shared.update(
-                    {"input_latents_video": initial_latents, "denoise_mask_video": denoise_mask_video}
+                    {"input_latents_video": initial_latents, "denoise_mask_video": denoise_mask_video},
                 )
             inputs_shared["video_latents"] = (
                 self.scheduler.sigmas[0] * denoise_mask_video * inputs_shared["video_noise"]
@@ -240,7 +240,11 @@ class LTX2AudioVideoPipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
-                unit, self, inputs_shared, inputs_posi, inputs_nega
+                unit,
+                self,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
             )
 
         # Denoise Stage 1
@@ -295,7 +299,13 @@ class LTX2AudioVideoPipeline(BasePipeline):
         return video, decoded_audio
 
     def apply_input_images_to_latents(
-        self, latents, input_latents, input_indexes, input_strength, initial_latents=None, num_frames=121
+        self,
+        latents,
+        input_latents,
+        input_indexes,
+        input_strength,
+        initial_latents=None,
+        num_frames=121,
     ):
         b, _, f, h, w = latents.shape
         denoise_mask = torch.ones((b, 1, f, h, w), dtype=latents.dtype, device=latents.device)
@@ -322,11 +332,11 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
             inputs_shared["use_two_stage_pipeline"] = True
             inputs_shared["cfg_scale"] = 1.0
             print(
-                "Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0."
+                "Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0.",
             )
         if inputs_shared.get("use_two_stage_pipeline", False):
             # distill pipeline also uses two-stage, but it does not needs lora
-            if not inputs_shared.get("use_distilled_pipeline", False):  # noqa: SIM102 – readability
+            if not inputs_shared.get("use_distilled_pipeline", False):
                 if not (hasattr(pipe, "stage2_lora_path") and pipe.stage2_lora_path is not None):
                     raise ValueError("Two-stage pipeline requested, but stage2_lora_path is not set in the pipeline.")
             if not (hasattr(pipe, "upsampler") and pipe.upsampler is not None):
@@ -369,11 +379,14 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
 
     def _convert_to_additive_mask(self, attention_mask: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
         return (attention_mask - 1).to(dtype).reshape(
-            (attention_mask.shape[0], 1, -1, attention_mask.shape[-1])
+            (attention_mask.shape[0], 1, -1, attention_mask.shape[-1]),
         ) * torch.finfo(dtype).max
 
     def _run_connectors(
-        self, pipe, encoded_input: torch.Tensor, attention_mask: torch.Tensor
+        self,
+        pipe,
+        encoded_input: torch.Tensor,
+        attention_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         connector_attention_mask = self._convert_to_additive_mask(attention_mask, encoded_input.dtype)
 
@@ -388,7 +401,8 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         encoded = encoded * attention_mask
 
         encoded_for_audio, _ = pipe.text_encoder_post_modules.audio_embeddings_connector(
-            encoded_input, connector_attention_mask
+            encoded_input,
+            connector_attention_mask,
         )
 
         return encoded, encoded_for_audio, attention_mask.squeeze(-1)
@@ -410,7 +424,7 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
             Normalized tensor of shape [batch, seq_len, hidden_dim * num_layers],
             with padded positions zeroed out.
         """
-        b, t, d, l = encoded_text.shape  # noqa: E741
+        b, t, d, num_layers = encoded_text.shape
         device = encoded_text.device
         # Build mask: [B, T, 1, 1]
         token_indices = torch.arange(t, device=device)[None, :]  # [1, T]
@@ -438,23 +452,29 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         # concat to be [Batch, T,  D * L] - this preserves the original structure
         normed = normed.reshape(b, t, -1)  # [B, T, D * L]
         # Apply mask to preserve original padding (set padded positions to 0)
-        mask_flattened = rearrange(mask, "b t 1 1 -> b t 1").expand(-1, -1, d * l)
+        mask_flattened = rearrange(mask, "b t 1 1 -> b t 1").expand(-1, -1, d * num_layers)
         normed = normed.masked_fill(~mask_flattened, 0.0)
 
-        return normed  # noqa: RET504 – readability
+        return normed
 
     def _run_feature_extractor(
-        self, pipe, hidden_states: torch.Tensor, attention_mask: torch.Tensor, padding_side: str = "right"
+        self,
+        pipe,
+        hidden_states: torch.Tensor,
+        attention_mask: torch.Tensor,
+        padding_side: str = "right",
     ) -> torch.Tensor:
         encoded_text_features = torch.stack(hidden_states, dim=-1)
         encoded_text_features_dtype = encoded_text_features.dtype
         sequence_lengths = attention_mask.sum(dim=-1)
         normed_concated_encoded_text_features = self._norm_and_concat_padded_batch(
-            encoded_text_features, sequence_lengths, padding_side=padding_side
+            encoded_text_features,
+            sequence_lengths,
+            padding_side=padding_side,
         )
 
         return pipe.text_encoder_post_modules.feature_extractor_linear(
-            normed_concated_encoded_text_features.to(encoded_text_features_dtype)
+            normed_concated_encoded_text_features.to(encoded_text_features_dtype),
         )
 
     def _preprocess_text(
@@ -475,7 +495,10 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         attention_mask = torch.tensor([[w[1] for w in token_pairs]], device=pipe.device)
         outputs = pipe.text_encoder(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
         projected = self._run_feature_extractor(
-            pipe, hidden_states=outputs.hidden_states, attention_mask=attention_mask, padding_side=padding_side
+            pipe,
+            hidden_states=outputs.hidden_states,
+            attention_mask=attention_mask,
+            padding_side=padding_side,
         )
         return projected, attention_mask
 
@@ -501,16 +524,25 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process_stage(
-        self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0
+        self,
+        pipe: LTX2AudioVideoPipeline,
+        height,
+        width,
+        num_frames,
+        seed,
+        rand_device,
+        frame_rate=24.0,
     ):
         video_pixel_shape = VideoPixelShape(batch=1, frames=num_frames, width=width, height=height, fps=frame_rate)
         video_latent_shape = VideoLatentShape.from_pixel_shape(
-            shape=video_pixel_shape, latent_channels=pipe.video_vae_encoder.latent_channels
+            shape=video_pixel_shape,
+            latent_channels=pipe.video_vae_encoder.latent_channels,
         )
         video_noise = pipe.generate_noise(video_latent_shape.to_torch_shape(), seed=seed, rand_device=rand_device)
 
         latent_coords = pipe.video_patchifier.get_patch_grid_bounds(
-            output_shape=video_latent_shape, device=pipe.device
+            output_shape=video_latent_shape,
+            device=pipe.device,
         )
         video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, True).float()
         video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
@@ -557,7 +589,14 @@ class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):
         )
 
     def process(
-        self, pipe: LTX2AudioVideoPipeline, input_video, video_noise, audio_noise, tiled, tile_size, tile_stride
+        self,
+        pipe: LTX2AudioVideoPipeline,
+        input_video,
+        video_noise,
+        audio_noise,
+        tiled,
+        tile_size,
+        tile_stride,
     ):
         if input_video is None:
             return {"video_latents": video_noise, "audio_latents": audio_noise}
@@ -591,9 +630,9 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         image = image / 127.5 - 1.0
         image = repeat(image, "H W C -> B C F H W", B=1, F=1)
         latent = pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(
-            pipe.device
+            pipe.device,
         )
-        return latent  # noqa: RET504 – readability
+        return latent
 
     def process(
         self,
@@ -618,19 +657,29 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         stage1_width = width // 2 if use_two_stage_pipeline else width
         stage1_latents = [
             self.get_image_latent(
-                pipe, img, stage1_height, stage1_width, tiled, tile_size_in_pixels, tile_overlap_in_pixels
+                pipe,
+                img,
+                stage1_height,
+                stage1_width,
+                tiled,
+                tile_size_in_pixels,
+                tile_overlap_in_pixels,
             )
             for img in input_images
         ]
         video_latents, denoise_mask_video, initial_latents = pipe.apply_input_images_to_latents(
-            video_latents, stage1_latents, input_images_indexes, input_images_strength, num_frames=num_frames
+            video_latents,
+            stage1_latents,
+            input_images_indexes,
+            input_images_strength,
+            num_frames=num_frames,
         )
         output_dicts.update(
             {
                 "video_latents": video_latents,
                 "denoise_mask_video": denoise_mask_video,
                 "input_latents_video": initial_latents,
-            }
+            },
         )
         if use_two_stage_pipeline:
             stage2_latents = [
@@ -660,7 +709,7 @@ def model_fn_ltx2(
     timestep = timestep.float() / 1000.0
 
     # patchify
-    b, c_v, f, h, w = video_latents.shape
+    _b, _c_v, f, h, w = video_latents.shape
     video_latents = video_patchifier.patchify(video_latents)
     video_timesteps = timestep.repeat(1, video_latents.shape[1], 1)
     if denoise_mask_video is not None:

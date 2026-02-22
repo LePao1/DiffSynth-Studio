@@ -26,7 +26,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep)
-    return loss  # noqa: RET504 – readability
+    return loss
 
 
 def DirectDistillLoss(pipe: BasePipeline, **inputs):
@@ -38,7 +38,7 @@ def DirectDistillLoss(pipe: BasePipeline, **inputs):
         noise_pred = pipe.model_fn(**models, **inputs, timestep=timestep, progress_id=progress_id)
         inputs["latents"] = pipe.step(pipe.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs)
     loss = torch.nn.functional.mse_loss(inputs["latents"].float(), inputs["input_latents"].float())
-    return loss  # noqa: RET504 – readability
+    return loss
 
 
 class TrajectoryImitationLoss(torch.nn.Module):
@@ -79,7 +79,10 @@ class TrajectoryImitationLoss(torch.nn.Module):
                 progress_id=progress_id,
             )
             inputs_shared["latents"] = pipe.step(
-                pipe.scheduler, progress_id=progress_id, noise_pred=noise_pred.detach(), **inputs_shared
+                pipe.scheduler,
+                progress_id=progress_id,
+                noise_pred=noise_pred.detach(),
+                **inputs_shared,
             )
 
             trajectory.append(inputs_shared["latents"].clone())
@@ -122,13 +125,14 @@ class TrajectoryImitationLoss(torch.nn.Module):
                 latents_ = trajectory_teacher[-1]
             else:
                 progress_id_teacher = torch.argmin(
-                    (timesteps_teacher - pipe.scheduler.timesteps[progress_id + 1]).abs()
+                    (timesteps_teacher - pipe.scheduler.timesteps[progress_id + 1]).abs(),
                 )
                 latents_ = trajectory_teacher[progress_id_teacher]
 
             target = (latents_ - inputs_shared["latents"]) / (sigma_ - sigma)
             loss = loss + torch.nn.functional.mse_loss(
-                noise_pred.float(), target.float()
+                noise_pred.float(),
+                target.float(),
             ) * pipe.scheduler.training_weight(timestep)
         return loss
 
@@ -158,13 +162,16 @@ class TrajectoryImitationLoss(torch.nn.Module):
                 progress_id=progress_id,
             )
             inputs_shared["latents"] = pipe.step(
-                pipe.scheduler, progress_id=progress_id, noise_pred=noise_pred.detach(), **inputs_shared
+                pipe.scheduler,
+                progress_id=progress_id,
+                noise_pred=noise_pred.detach(),
+                **inputs_shared,
             )
 
         image_pred = pipe.vae_decoder(inputs_shared["latents"])
         image_real = pipe.vae_decoder(trajectory_teacher[-1])
         loss = self.loss_fn(image_pred.float(), image_real.float())
-        return loss  # noqa: RET504 – readability
+        return loss
 
     def forward(self, pipe: BasePipeline, inputs_shared, inputs_posi, inputs_nega):
         if not self.initialized:
@@ -172,12 +179,25 @@ class TrajectoryImitationLoss(torch.nn.Module):
         with torch.no_grad():
             pipe.scheduler.set_timesteps(8)
             timesteps_teacher, trajectory_teacher = self.fetch_trajectory(
-                inputs_shared["teacher"], pipe.scheduler.timesteps, inputs_shared, inputs_posi, inputs_nega, 50, 2
+                inputs_shared["teacher"],
+                pipe.scheduler.timesteps,
+                inputs_shared,
+                inputs_posi,
+                inputs_nega,
+                50,
+                2,
             )
             timesteps_teacher = timesteps_teacher.to(dtype=pipe.torch_dtype, device=pipe.device)
         loss_1 = self.align_trajectory(
-            pipe, timesteps_teacher, trajectory_teacher, inputs_shared, inputs_posi, inputs_nega, 8, 1
+            pipe,
+            timesteps_teacher,
+            trajectory_teacher,
+            inputs_shared,
+            inputs_posi,
+            inputs_nega,
+            8,
+            1,
         )
         loss_2 = self.compute_regularization(pipe, trajectory_teacher, inputs_shared, inputs_posi, inputs_nega, 8, 1)
         loss = loss_1 + loss_2
-        return loss  # noqa: RET504 – readability
+        return loss

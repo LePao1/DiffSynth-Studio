@@ -1,3 +1,6 @@
+import functools
+import operator
+
 import numpy as np
 import torch
 from einops import reduce, repeat
@@ -15,11 +18,11 @@ class PipelineUnit:
         self,
         seperate_cfg: bool = False,
         take_over: bool = False,
-        input_params: tuple[str] = None,
-        output_params: tuple[str] = None,
-        input_params_posi: dict[str, str] = None,
-        input_params_nega: dict[str, str] = None,
-        onload_model_names: tuple[str] = None,
+        input_params: tuple[str] | None = None,
+        output_params: tuple[str] | None = None,
+        input_params_posi: dict[str, str] | None = None,
+        input_params_nega: dict[str, str] | None = None,
+        onload_model_names: tuple[str] | None = None,
     ):
         self.seperate_cfg = seperate_cfg
         self.take_over = take_over
@@ -30,24 +33,20 @@ class PipelineUnit:
         self.onload_model_names = onload_model_names
 
     def fetch_input_params(self):
-        params = []
-        if self.input_params is not None:
-            for param in self.input_params:
-                params.append(param)
+        # Use direct list copy to avoid manual item-by-item copying (PERF402)
+        params = list(self.input_params) if self.input_params is not None else []
         if self.input_params_posi is not None:
-            for _, param in self.input_params_posi.items():
+            for param in self.input_params_posi.values():
                 params.append(param)
         if self.input_params_nega is not None:
-            for _, param in self.input_params_nega.items():
+            for param in self.input_params_nega.values():
                 params.append(param)
         params = sorted(set(params))
-        return params  # noqa: RET504 – readability
+        return params
 
     def fetch_output_params(self):
-        params = []
-        if self.output_params is not None:
-            for param in self.output_params:
-                params.append(param)
+        # Use direct list copy to avoid manual item-by-item copying (PERF402)
+        params = list(self.output_params) if self.output_params is not None else []
         return params
 
     def process(self, pipe, **kwargs) -> dict:
@@ -60,7 +59,7 @@ class PipelineUnit:
 class BasePipeline(torch.nn.Module):
     def __init__(
         self,
-        device=get_device_type(),  # noqa: B008
+        device=get_device_type(),
         torch_dtype=torch.float16,
         height_division_factor=64,
         width_division_factor=64,
@@ -85,7 +84,7 @@ class BasePipeline(torch.nn.Module):
         self.lora_loader = GeneralLoRALoader
 
     def to(self, *args, **kwargs):
-        device, dtype, non_blocking, convert_to_format = torch._C._nn._parse_to(*args, **kwargs)
+        device, dtype, _non_blocking, _convert_to_format = torch._C._nn._parse_to(*args, **kwargs)
         if device is not None:
             self.device = device
         if dtype is not None:
@@ -110,7 +109,7 @@ class BasePipeline(torch.nn.Module):
                 num_frames + self.time_division_factor - 1
             ) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
             print(
-                f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}."
+                f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}.",
             )
         return height, width, num_frames
 
@@ -120,18 +119,22 @@ class BasePipeline(torch.nn.Module):
         image = image.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
         image = image * ((max_value - min_value) / 255) + min_value
         image = repeat(image, f"H W C -> {pattern}", **({"B": 1} if "B" in pattern else {}))
-        return image  # noqa: RET504 – readability
+        return image
 
     def preprocess_video(self, video, torch_dtype=None, device=None, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a list of PIL.Image to torch.Tensor
         video = [
             self.preprocess_image(
-                image, torch_dtype=torch_dtype, device=device, min_value=min_value, max_value=max_value
+                image,
+                torch_dtype=torch_dtype,
+                device=device,
+                min_value=min_value,
+                max_value=max_value,
             )
             for image in video
         ]
         video = torch.stack(video, dim=pattern.index("T") // 2)
-        return video  # noqa: RET504 – readability
+        return video
 
     def vae_output_to_image(self, vae_output, pattern="B C H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to PIL.Image
@@ -140,7 +143,7 @@ class BasePipeline(torch.nn.Module):
         image = ((vae_output - min_value) * (255 / (max_value - min_value))).clip(0, 255)
         image = image.to(device="cpu", dtype=torch.uint8)
         image = Image.fromarray(image.numpy())
-        return image  # noqa: RET504 – readability
+        return image
 
     def vae_output_to_video(self, vae_output, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to list of PIL.Image
@@ -150,13 +153,13 @@ class BasePipeline(torch.nn.Module):
             self.vae_output_to_image(image, pattern="H W C", min_value=min_value, max_value=max_value)
             for image in vae_output
         ]
-        return video  # noqa: RET504 – readability
+        return video
 
-    def load_models_to_device(self, model_names):  # noqa: C901
+    def load_models_to_device(self, model_names):
         if self.vram_management_enabled:
             # offload models
             for name, model in self.named_children():
-                if name not in model_names:  # noqa: SIM102 – readability
+                if name not in model_names:
                     if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                         if hasattr(model, "offload"):
                             model.offload()
@@ -167,7 +170,7 @@ class BasePipeline(torch.nn.Module):
             getattr(torch, self.device_type).empty_cache()
             # onload models
             for name, model in self.named_children():
-                if name in model_names:  # noqa: SIM102 – readability
+                if name in model_names:
                     if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
                         if hasattr(model, "onload"):
                             model.onload()
@@ -177,13 +180,19 @@ class BasePipeline(torch.nn.Module):
                                     module.onload()
 
     def generate_noise(
-        self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None
+        self,
+        shape,
+        seed=None,
+        rand_device="cpu",
+        rand_torch_dtype=torch.float32,
+        device=None,
+        torch_dtype=None,
     ):
         # Initialize Gaussian noise
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
         noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
-        return noise  # noqa: RET504 – readability
+        return noise
 
     def get_vram(self):
         device = self.device if not IS_NPU_AVAILABLE else get_device_name()
@@ -204,7 +213,7 @@ class BasePipeline(torch.nn.Module):
             module = self.get_module(self, name)
             if module is None:
                 print(
-                    f"No {name} models in the pipeline. We cannot enable training on the model. If this occurs during the data processing stage, it is normal."
+                    f"No {name} models in the pipeline. We cannot enable training on the model. If this occurs during the data processing stage, it is normal.",
                 )
                 continue
             module.train()
@@ -217,11 +226,13 @@ class BasePipeline(torch.nn.Module):
         timestep = scheduler.timesteps[progress_id]
         if inpaint_mask is not None:
             noise_pred_expected = scheduler.return_to_timestep(
-                scheduler.timesteps[progress_id], latents, input_latents
+                scheduler.timesteps[progress_id],
+                latents,
+                input_latents,
             )
             noise_pred = self.blend_with_mask(noise_pred_expected, noise_pred, inpaint_mask)
         latents_next = scheduler.step(noise_pred, timestep, latents)
-        return latents_next  # noqa: RET504 – readability
+        return latents_next
 
     def split_pipeline_units(self, model_names: list[str]):
         return PipelineUnitGraph().split_pipeline_units(self.units, model_names)
@@ -270,7 +281,7 @@ class BasePipeline(torch.nn.Module):
                         mod.lora_B_weights.append(lora[lora_b_name])
             if verbose >= 1:
                 print(
-                    f"{updated_num} tensors are patched by LoRA. You can use `pipe.clear_lora()` to clear all LoRA layers."
+                    f"{updated_num} tensors are patched by LoRA. You can use `pipe.clear_lora()` to clear all LoRA layers.",
                 )
         else:
             lora_loader.fuse_lora_to_base_model(module, lora, alpha=alpha)
@@ -288,7 +299,9 @@ class BasePipeline(torch.nn.Module):
         if verbose >= 1:
             print(f"{cleared_num} LoRA layers are cleared.")
 
-    def download_and_load_models(self, model_configs: list[ModelConfig] = None, vram_limit: float = None):
+    def download_and_load_models(
+        self, model_configs: list[ModelConfig] | None = None, vram_limit: float | None = None
+    ):
         if model_configs is None:
             model_configs = []
         model_pool = ModelPool()
@@ -345,9 +358,11 @@ class PipelineUnitGraph:
         last_compute_unit_id = {}
         edges = []
         for unit_id, unit in enumerate(units):
-            for input_param in unit.fetch_input_params():
-                if input_param in last_compute_unit_id:
-                    edges.append((last_compute_unit_id[input_param], unit_id))
+            edges.extend(
+                (last_compute_unit_id[input_param], unit_id)
+                for input_param in unit.fetch_input_params()
+                if input_param in last_compute_unit_id
+            )
             for output_param in unit.fetch_output_params():
                 last_compute_unit_id[output_param] = unit_id
         return edges
@@ -355,7 +370,9 @@ class PipelineUnitGraph:
     def build_chains(self, units: list[PipelineUnit]):
         # Establish updating chains for each variable
         # to track their computation process.
-        params = sum([unit.fetch_input_params() + unit.fetch_output_params() for unit in units], [])
+        params = functools.reduce(
+            operator.iadd, [unit.fetch_input_params() + unit.fetch_output_params() for unit in units], []
+        )
         params = sorted(set(params))
         chains = {param: [] for param in params}
         for unit_id, unit in enumerate(units):
@@ -388,7 +405,7 @@ class PipelineUnitGraph:
                 break
             related_unit_ids.extend(neighbors)
         related_unit_ids = sorted(set(related_unit_ids))
-        return related_unit_ids  # noqa: RET504 – readability
+        return related_unit_ids
 
     def search_updating_unit_ids(self, units: list[PipelineUnit], chains, related_unit_ids):
         # If the input parameters of this subgraph are updated outside the subgraph,
@@ -403,12 +420,12 @@ class PipelineUnitGraph:
             unit_id = first_compute_unit_id[param]
             chain = chains[param]
             if unit_id in chain and chain.index(unit_id) != len(chain) - 1:
-                for unit_id_ in chain[chain.index(unit_id) + 1 :]:
-                    if unit_id_ not in related_unit_ids:
-                        updating_unit_ids.append(unit_id_)
+                updating_unit_ids.extend(
+                    unit_id_ for unit_id_ in chain[chain.index(unit_id) + 1 :] if unit_id_ not in related_unit_ids
+                )
         related_unit_ids.extend(updating_unit_ids)
         related_unit_ids = sorted(set(related_unit_ids))
-        return related_unit_ids  # noqa: RET504 – readability
+        return related_unit_ids
 
     def split_pipeline_units(self, units: list[PipelineUnit], model_names: list[str]):
         # Split the computation graph,
@@ -433,12 +450,20 @@ class PipelineUnitRunner:
         pass
 
     def __call__(
-        self, unit: PipelineUnit, pipe: BasePipeline, inputs_shared: dict, inputs_posi: dict, inputs_nega: dict
+        self,
+        unit: PipelineUnit,
+        pipe: BasePipeline,
+        inputs_shared: dict,
+        inputs_posi: dict,
+        inputs_nega: dict,
     ) -> tuple[dict, dict]:
         if unit.take_over:
             # Let the pipeline unit take over this function.
             inputs_shared, inputs_posi, inputs_nega = unit.process(
-                pipe, inputs_shared=inputs_shared, inputs_posi=inputs_posi, inputs_nega=inputs_nega
+                pipe,
+                inputs_shared=inputs_shared,
+                inputs_posi=inputs_posi,
+                inputs_nega=inputs_nega,
             )
         elif unit.seperate_cfg:
             # Positive side

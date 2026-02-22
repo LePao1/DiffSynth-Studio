@@ -179,7 +179,16 @@ def attention_forward(
 ):
     if compatibility_mode or (attn_mask is not None):
         return torch_sdpa(
-            q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale
+            q,
+            k,
+            v,
+            q_pattern,
+            k_pattern,
+            v_pattern,
+            out_pattern,
+            dims,
+            attn_mask=attn_mask,
+            scale=scale,
         )
     if ATTENTION_IMPLEMENTATION == "flash_attention_3":
         return flash_attention_3(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)

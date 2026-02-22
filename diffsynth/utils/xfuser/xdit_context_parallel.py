@@ -42,7 +42,7 @@ def pad_freqs(original_tensor, target_len):
         original_tensor = original_tensor.cpu()
     padding_tensor = torch.ones(pad_size, s1, s2, dtype=original_tensor.dtype, device=original_tensor.device)
     padded_tensor = torch.cat([original_tensor, padding_tensor], dim=0).to(device=original_tensor_device)
-    return padded_tensor  # noqa: RET504 – readability
+    return padded_tensor
 
 
 def rope_apply(x, freqs, num_heads):
@@ -106,7 +106,13 @@ def usp_dit_forward(
     for block in self.blocks:
         if self.training:
             x = gradient_checkpoint_forward(
-                block, use_gradient_checkpointing, use_gradient_checkpointing_offload, x, context, t_mod, freqs
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x,
+                context,
+                t_mod,
+                freqs,
             )
         else:
             x = block(x, context, t_mod, freqs)
@@ -119,7 +125,7 @@ def usp_dit_forward(
 
     # unpatchify
     x = self.unpatchify(x, (f, h, w))
-    return x  # noqa: RET504 – readability
+    return x
 
 
 def usp_attn_forward(self, x, freqs):

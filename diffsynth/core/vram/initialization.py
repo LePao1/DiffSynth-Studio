@@ -4,7 +4,7 @@ import torch
 
 
 @contextmanager
-def skip_model_initialization(device=torch.device("meta")):  # noqa: B008
+def skip_model_initialization(device=torch.device("meta")):
 
     def register_empty_parameter(module, name, param):
         old_register_parameter(module, name, param)

@@ -16,7 +16,7 @@ def launch_training_task(
     learning_rate: float = 1e-5,
     weight_decay: float = 1e-2,
     num_workers: int = 1,
-    save_steps: int = None,
+    save_steps: int | None = None,
     num_epochs: int = 1,
     args=None,
 ):
@@ -37,10 +37,7 @@ def launch_training_task(
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
-                if dataset.load_from_cache:  # noqa: SIM108 – readability
-                    loss = model({}, inputs=data)
-                else:
-                    loss = model(data)
+                loss = model({}, inputs=data) if dataset.load_from_cache else model(data)
                 accelerator.backward(loss)
                 optimizer.step()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
@@ -62,7 +59,10 @@ def launch_data_process_task(
         num_workers = args.dataset_num_workers
 
     dataloader = torch.utils.data.DataLoader(
-        dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers
+        dataset,
+        shuffle=False,
+        collate_fn=lambda x: x[0],
+        num_workers=num_workers,
     )
     model.to(device=accelerator.device)
     model, dataloader = accelerator.prepare(model, dataloader)
