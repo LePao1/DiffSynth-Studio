@@ -459,9 +459,8 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         normed = normed.reshape(b, t, -1)  # [B, T, D * L]
         # Apply mask to preserve original padding (set padded positions to 0)
         mask_flattened = rearrange(mask, "b t 1 1 -> b t 1").expand(-1, -1, d * num_layers)
-        normed = normed.masked_fill(~mask_flattened, 0.0)
+        return normed.masked_fill(~mask_flattened, 0.0)
 
-        return normed
 
     def _run_feature_extractor(
         self,
@@ -635,10 +634,9 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         image = torch.Tensor(np.array(image, dtype=np.float32)).to(dtype=pipe.torch_dtype, device=pipe.device)
         image = image / 127.5 - 1.0
         image = repeat(image, "H W C -> B C F H W", B=1, F=1)
-        latent = pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(
+        return pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(
             pipe.device,
         )
-        return latent
 
     def process(
         self,

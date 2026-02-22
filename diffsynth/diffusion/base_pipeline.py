@@ -41,13 +41,11 @@ class PipelineUnit:
         if self.input_params_nega is not None:
             for param in self.input_params_nega.values():
                 params.append(param)
-        params = sorted(set(params))
-        return params
+        return sorted(set(params))
 
     def fetch_output_params(self):
         # Use direct list copy to avoid manual item-by-item copying (PERF402)
-        params = list(self.output_params) if self.output_params is not None else []
-        return params
+        return list(self.output_params) if self.output_params is not None else []
 
     def process(self, _pipe, **_kwargs) -> dict:
         return {}
@@ -120,8 +118,7 @@ class BasePipeline(torch.nn.Module):
         image = torch.Tensor(np.array(image, dtype=np.float32))
         image = image.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
         image = image * ((max_value - min_value) / 255) + min_value
-        image = repeat(image, f"H W C -> {pattern}", **({"B": 1} if "B" in pattern else {}))
-        return image
+        return repeat(image, f"H W C -> {pattern}", **({"B": 1} if "B" in pattern else {}))
 
     def preprocess_video(self, video, torch_dtype=None, device=None, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a list of PIL.Image to torch.Tensor
@@ -135,8 +132,7 @@ class BasePipeline(torch.nn.Module):
             )
             for image in video
         ]
-        video = torch.stack(video, dim=pattern.index("T") // 2)
-        return video
+        return torch.stack(video, dim=pattern.index("T") // 2)
 
     def vae_output_to_image(self, vae_output, pattern="B C H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to PIL.Image
@@ -144,18 +140,16 @@ class BasePipeline(torch.nn.Module):
             vae_output = reduce(vae_output, f"{pattern} -> H W C", reduction="mean")
         image = ((vae_output - min_value) * (255 / (max_value - min_value))).clip(0, 255)
         image = image.to(device="cpu", dtype=torch.uint8)
-        image = Image.fromarray(image.numpy())
-        return image
+        return Image.fromarray(image.numpy())
 
     def vae_output_to_video(self, vae_output, pattern="B C T H W", min_value=-1, max_value=1):
         # Transform a torch.Tensor to list of PIL.Image
         if pattern != "T H W C":
             vae_output = reduce(vae_output, f"{pattern} -> T H W C", reduction="mean")
-        video = [
+        return [
             self.vae_output_to_image(image, pattern="H W C", min_value=min_value, max_value=max_value)
             for image in vae_output
         ]
-        return video
 
     def load_models_to_device(self, model_names):  # noqa: C901
         if self.vram_management_enabled:
@@ -193,8 +187,7 @@ class BasePipeline(torch.nn.Module):
         # Initialize Gaussian noise
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
-        noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
-        return noise
+        return noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
 
     def get_vram(self):
         device = self.device if not IS_NPU_AVAILABLE else get_device_name()
@@ -233,8 +226,7 @@ class BasePipeline(torch.nn.Module):
                 input_latents,
             )
             noise_pred = self.blend_with_mask(noise_pred_expected, noise_pred, inpaint_mask)
-        latents_next = scheduler.step(noise_pred, timestep, latents)
-        return latents_next
+        return scheduler.step(noise_pred, timestep, latents)
 
     def split_pipeline_units(self, model_names: list[str]):
         return PipelineUnitGraph().split_pipeline_units(self.units, model_names)
@@ -406,8 +398,7 @@ class PipelineUnitGraph:
             if len(neighbors) == 0:
                 break
             related_unit_ids.extend(neighbors)
-        related_unit_ids = sorted(set(related_unit_ids))
-        return related_unit_ids
+        return sorted(set(related_unit_ids))
 
     def search_updating_unit_ids(self, units: list[PipelineUnit], chains, related_unit_ids):
         # If the input parameters of this subgraph are updated outside the subgraph,

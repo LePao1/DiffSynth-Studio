@@ -173,5 +173,4 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_training_config(parser)
     parser = add_output_config(parser)
     parser = add_lora_config(parser)
-    parser = add_gradient_config(parser)
-    return parser
+    return add_gradient_config(parser)

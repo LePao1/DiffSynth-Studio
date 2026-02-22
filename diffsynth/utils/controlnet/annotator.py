@@ -84,5 +84,4 @@ class Annotator:
                 image_resolution=min(width, height),
                 **kwargs,
             )
-        image = image.resize((width, height))
-        return image
+        return image.resize((width, height))

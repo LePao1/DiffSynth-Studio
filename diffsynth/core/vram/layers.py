@@ -343,8 +343,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
             out_dtype=origin_dtype,
         )
         new_shape = origin_shape[:-1] + result.shape[-1:]
-        result = result.reshape(new_shape)
-        return result
+        return result.reshape(new_shape)
 
     def load_from_disk(self, torch_dtype, device, assign=True):
         weight = self.disk_map[self.name + ".weight"].to(dtype=torch_dtype, device=device)
@@ -401,8 +400,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         return weight, bias
 
     def linear_forward(self, x, weight, bias):
-        out = self.fp8_linear(x, weight, bias) if self.enable_fp8 else torch.nn.functional.linear(x, weight, bias)
-        return out
+        return self.fp8_linear(x, weight, bias) if self.enable_fp8 else torch.nn.functional.linear(x, weight, bias)
 
     def lora_forward(self, x, out):
         if self.lora_merger is None:

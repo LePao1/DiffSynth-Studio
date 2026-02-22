@@ -25,8 +25,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
         training_target = training_target[:, :, 1:]
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
-    loss = loss * pipe.scheduler.training_weight(timestep)
-    return loss
+    return loss * pipe.scheduler.training_weight(timestep)
 
 
 def DirectDistillLoss(pipe: BasePipeline, **inputs):
@@ -37,8 +36,7 @@ def DirectDistillLoss(pipe: BasePipeline, **inputs):
         timestep = timestep.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
         noise_pred = pipe.model_fn(**models, **inputs, timestep=timestep, progress_id=progress_id)
         inputs["latents"] = pipe.step(pipe.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs)
-    loss = torch.nn.functional.mse_loss(inputs["latents"].float(), inputs["input_latents"].float())
-    return loss
+    return torch.nn.functional.mse_loss(inputs["latents"].float(), inputs["input_latents"].float())
 
 
 class TrajectoryImitationLoss(torch.nn.Module):
@@ -170,8 +168,7 @@ class TrajectoryImitationLoss(torch.nn.Module):
 
         image_pred = pipe.vae_decoder(inputs_shared["latents"])
         image_real = pipe.vae_decoder(trajectory_teacher[-1])
-        loss = self.loss_fn(image_pred.float(), image_real.float())
-        return loss
+        return self.loss_fn(image_pred.float(), image_real.float())
 
     def forward(self, pipe: BasePipeline, inputs_shared, inputs_posi, inputs_nega):
         if not self.initialized:
@@ -199,5 +196,4 @@ class TrajectoryImitationLoss(torch.nn.Module):
             1,
         )
         loss_2 = self.compute_regularization(pipe, trajectory_teacher, inputs_shared, inputs_posi, inputs_nega, 8, 1)
-        loss = loss_1 + loss_2
-        return loss
+        return loss_1 + loss_2

@@ -103,8 +103,7 @@ def convert_state_dict_to_keys_dict(state_dict):
 
 def load_keys_dict_from_bin(file_path):
     state_dict = load_state_dict_from_bin(file_path)
-    keys_dict = convert_state_dict_to_keys_dict(state_dict)
-    return keys_dict
+    return convert_state_dict_to_keys_dict(state_dict)
 
 
 def convert_keys_dict_to_single_str(state_dict, with_shape=True):
@@ -119,8 +118,7 @@ def convert_keys_dict_to_single_str(state_dict, with_shape=True):
                     keys.append(key + ":" + shape)
                 keys.append(key)
     keys.sort()
-    keys_str = ",".join(keys)
-    return keys_str
+    return ",".join(keys)
 
 
 def hash_model_file(path, with_shape=True):

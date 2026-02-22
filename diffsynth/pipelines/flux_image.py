@@ -445,8 +445,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
             max_length=max_length,
             truncation=True,
         ).input_ids.to(device)
-        prompt_emb = text_encoder(input_ids)
-        return prompt_emb
+        return text_encoder(input_ids)
 
     def encode_prompt(
         self,
@@ -541,16 +540,14 @@ class FluxImageUnit_ControlNet(PipelineUnit):
         mask = (pipe.preprocess_image(mask) + 1) / 2
         mask = mask.mean(dim=1, keepdim=True)
         mask = 1 - torch.nn.functional.interpolate(mask, size=latents.shape[-2:])
-        latents = torch.concat([latents, mask], dim=1)
-        return latents
+        return torch.concat([latents, mask], dim=1)
 
     def apply_controlnet_mask_on_image(self, pipe, image, mask):
         mask = mask.resize(image.size)
         mask = pipe.preprocess_image(mask).mean(dim=[0, 1]).cpu()
         image = np.array(image)
         image[mask > 0] = 0
-        image = Image.fromarray(image)
-        return image
+        return Image.fromarray(image)
 
     def process(
         self,
@@ -645,8 +642,7 @@ class FluxImageUnit_EntityControl(PipelineUnit):
             max_length=max_length,
             truncation=True,
         ).input_ids.to(device)
-        prompt_emb = text_encoder(input_ids)
-        return prompt_emb
+        return text_encoder(input_ids)
 
     def encode_prompt(
         self,
@@ -819,8 +815,7 @@ class FluxImageUnit_NexusGen(PipelineUnit):
         )
         ref_embed_text_ids = ref_embed_ids.to(device=latents.device, dtype=latents.dtype)
 
-        text_ids = torch.cat([embed_text_ids, ref_embed_text_ids], dim=1)
-        return text_ids
+        return torch.cat([embed_text_ids, ref_embed_text_ids], dim=1)
 
 
 class FluxImageUnit_Step1x(PipelineUnit):
@@ -1041,8 +1036,7 @@ class InfinitYou(torch.nn.Module):
         face_info = self.app_320.get(id_image_cv2)
         if len(face_info) > 0:
             return face_info
-        face_info = self.app_160.get(id_image_cv2)
-        return face_info
+        return self.app_160.get(id_image_cv2)
 
     def extract_arcface_bgr_embedding(self, in_image, landmark, device):
         from insightface.utils import face_align
@@ -1051,8 +1045,7 @@ class InfinitYou(torch.nn.Module):
         arc_face_image = torch.from_numpy(arc_face_image).unsqueeze(0).permute(0, 3, 1, 2) / 255.0
         arc_face_image = 2 * arc_face_image - 1
         arc_face_image = arc_face_image.contiguous().to(device=device, dtype=self.torch_dtype)
-        face_emb = self.arcface_model(arc_face_image)[0]  # [512], normalized
-        return face_emb
+        return self.arcface_model(arc_face_image)[0]  # [512], normalized
 
     def prepare_infinite_you(self, model, id_image, infinityou_guidance, device):
         import cv2
@@ -1095,16 +1088,14 @@ class FluxImageUnit_LoRAEncode(PipelineUnit):
     def load_lora(self, lora_config, dtype, device):
         loader = FluxLoRALoader(torch_dtype=dtype, device=device)
         lora = load_state_dict(lora_config.path, torch_dtype=dtype, device=device)
-        lora = loader.convert_state_dict(lora)
-        return lora
+        return loader.convert_state_dict(lora)
 
     def lora_embedding(self, pipe, lora_encoder_inputs):
         lora_emb = []
         for lora_config in self.parse_lora_encoder_inputs(lora_encoder_inputs):
             lora = self.load_lora(lora_config, pipe.torch_dtype, pipe.device)
             lora_emb.append(pipe.lora_encoder(lora))
-        lora_emb = torch.concat(lora_emb, dim=1)
-        return lora_emb
+        return torch.concat(lora_emb, dim=1)
 
     def add_to_text_embedding(self, prompt_emb, text_ids, lora_emb):
         prompt_emb = torch.concat([prompt_emb, lora_emb], dim=1)
@@ -1185,8 +1176,7 @@ class TeaCache:
         self.previous_hidden_states = None
 
     def update(self, hidden_states):
-        hidden_states = hidden_states + self.previous_residual
-        return hidden_states
+        return hidden_states + self.previous_residual
 
 
 class FastTileWorker:
@@ -1213,8 +1203,7 @@ class FastTileWorker:
         )
         mask = mask.clip(1, border_width)
         mask = (mask / border_width).to(dtype=data.dtype, device=data.device)
-        mask = rearrange(mask, "H W -> 1 H W")
-        return mask
+        return rearrange(mask, "H W -> 1 H W")
 
     def tiled_forward(
         self,
@@ -1489,6 +1478,5 @@ def model_fn_flux_image(  # noqa: C901
     if kontext_latents is not None:
         hidden_states = hidden_states[:, : -kontext_latents.shape[1]]
 
-    hidden_states = dit.unpatchify(hidden_states, height, width)
+    return dit.unpatchify(hidden_states, height, width)
 
-    return hidden_states

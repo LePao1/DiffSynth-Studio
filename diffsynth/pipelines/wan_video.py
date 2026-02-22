@@ -1440,8 +1440,7 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
         msk[:, :mask_len] = 1
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
-        msk = msk.transpose(1, 2)[0]
-        return msk
+        return msk.transpose(1, 2)[0]
 
     def process(
         self,
@@ -1566,8 +1565,7 @@ class TeaCache:
         self.previous_hidden_states = None
 
     def update(self, hidden_states):
-        hidden_states = hidden_states + self.previous_residual
-        return hidden_states
+        return hidden_states + self.previous_residual
 
 
 class TemporalTiler_BCTHW:
@@ -1589,8 +1587,7 @@ class TemporalTiler_BCTHW:
     def build_mask(self, data, is_bound, border_width):
         _, _, T, _, _ = data.shape
         t = self.build_1d_mask(T, is_bound[0], is_bound[1], border_width[0])
-        mask = repeat(t, "T -> 1 1 T 1 1")
-        return mask
+        return repeat(t, "T -> 1 1 T 1 1")
 
     def run(
         self,
@@ -1933,8 +1930,7 @@ def model_fn_wan_video(  # noqa: C901
     if reference_latents is not None:
         x = x[:, reference_latents.shape[1] :]
         f -= 1
-    x = dit.unpatchify(x, (f, h, w))
-    return x
+    return dit.unpatchify(x, (f, h, w))
 
 
 def model_fn_longcat_video(
@@ -1963,8 +1959,7 @@ def model_fn_longcat_video(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     output = -output
-    output = output.to(latents.dtype)
-    return output
+    return output.to(latents.dtype)
 
 
 def model_fn_wans2v(

@@ -78,8 +78,7 @@ class DiskMap:
         if state_dict_converter is None:
             return None
         state_dict = {name: name for file in self.files for name in file}
-        state_dict = state_dict_converter(state_dict)
-        return state_dict
+        return state_dict_converter(state_dict)
 
     def __iter__(self):
         if self.rename_dict is not None:

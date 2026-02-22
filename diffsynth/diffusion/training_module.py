@@ -18,13 +18,11 @@ class DiffusionTrainingModule(torch.nn.Module):
         return self
 
     def trainable_modules(self):
-        trainable_modules = filter(lambda p: p.requires_grad, self.parameters())
-        return trainable_modules
+        return filter(lambda p: p.requires_grad, self.parameters())
 
     def trainable_param_names(self):
         trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.named_parameters()))
-        trainable_param_names = {named_param[0] for named_param in trainable_param_names}
-        return trainable_param_names
+        return {named_param[0] for named_param in trainable_param_names}
 
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
         if lora_alpha is None:

@@ -56,8 +56,7 @@ class FlowMatchScheduler:
     def _calculate_shift_qwen_image(image_seq_len, base_seq_len=256, max_seq_len=8192, base_shift=0.5, max_shift=0.9):
         m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
         b = base_shift - m * base_seq_len
-        mu = image_seq_len * m + b
-        return mu
+        return image_seq_len * m + b
 
     @staticmethod
     def set_timesteps_qwen_image(
@@ -236,30 +235,25 @@ class FlowMatchScheduler:
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         sigma_ = 0 if to_final or timestep_id + 1 >= len(self.timesteps) else self.sigmas[timestep_id + 1]
-        prev_sample = sample + model_output * (sigma_ - sigma)
-        return prev_sample
+        return sample + model_output * (sigma_ - sigma)
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
-        model_output = (sample - sample_stablized) / sigma
-        return model_output
+        return (sample - sample_stablized) / sigma
 
     def add_noise(self, original_samples, noise, timestep):
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
-        sample = (1 - sigma) * original_samples + sigma * noise
-        return sample
+        return (1 - sigma) * original_samples + sigma * noise
 
     def training_target(self, sample, noise, _timestep):
-        target = noise - sample
-        return target
+        return noise - sample
 
     def training_weight(self, timestep):
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
-        weights = self.linear_timesteps_weights[timestep_id]
-        return weights
+        return self.linear_timesteps_weights[timestep_id]

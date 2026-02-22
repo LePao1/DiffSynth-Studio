@@ -523,8 +523,7 @@ def model_fn_z_image(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )[0]
     model_output = -model_output
-    model_output = rearrange(model_output, "C B H W -> B C H W")
-    return model_output
+    return rearrange(model_output, "C B H W -> B C H W")
 
 
 class ZImageUnit_Image2LoRAEncode(PipelineUnit):
@@ -547,8 +546,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
         for image in images:
             image = self.processor_highres(image)
             embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
-        embs = torch.stack(embs)
-        return embs
+        return torch.stack(embs)
 
     def encode_images_using_dinov3(self, pipe: ZImagePipeline, images: list[Image.Image]):
         pipe.load_models_to_device(["dinov3_image_encoder"])
@@ -556,8 +554,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
         for image in images:
             image = self.processor_highres(image)
             embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
-        embs = torch.stack(embs)
-        return embs
+        return torch.stack(embs)
 
     def encode_images(self, pipe: ZImagePipeline, images: list[Image.Image]):
         if images is None:
@@ -566,8 +563,7 @@ class ZImageUnit_Image2LoRAEncode(PipelineUnit):
             images = [images]
         embs_siglip2 = self.encode_images_using_siglip2(pipe, images)
         embs_dinov3 = self.encode_images_using_dinov3(pipe, images)
-        x = torch.concat([embs_siglip2, embs_dinov3], dim=-1)
-        return x
+        return torch.concat([embs_siglip2, embs_dinov3], dim=-1)
 
     def process(self, pipe: ZImagePipeline, image2lora_images):
         if image2lora_images is None:
@@ -711,8 +707,7 @@ def model_fn_z_image_turbo(
     unified = dit.all_final_layer["2-1"](unified, t_noisy)
     x = dit.unpatchify([unified[0]], patch_metadata.get("x_size"))[0]
     x = rearrange(x, "C B H W -> B C H W")
-    x = -x
-    return x
+    return -x
 
 
 def apply_npu_patch(enable_npu_patch: bool = True):

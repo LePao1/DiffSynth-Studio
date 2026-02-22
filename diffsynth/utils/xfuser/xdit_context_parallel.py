@@ -41,8 +41,7 @@ def pad_freqs(original_tensor, target_len):
     if original_tensor.device == "npu":
         original_tensor = original_tensor.cpu()
     padding_tensor = torch.ones(pad_size, s1, s2, dtype=original_tensor.dtype, device=original_tensor.device)
-    padded_tensor = torch.cat([original_tensor, padding_tensor], dim=0).to(device=original_tensor_device)
-    return padded_tensor
+    return torch.cat([original_tensor, padding_tensor], dim=0).to(device=original_tensor_device)
 
 
 def rope_apply(x, freqs, num_heads):
@@ -124,8 +123,7 @@ def usp_dit_forward(
     x = x[:, :-pad_shape] if pad_shape > 0 else x
 
     # unpatchify
-    x = self.unpatchify(x, (f, h, w))
-    return x
+    return self.unpatchify(x, (f, h, w))
 
 
 def usp_attn_forward(self, x, freqs):

@@ -264,9 +264,8 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         out = out.to(dtype=dtype, device=device)
 
         batch_size, num_channels, seq_len, hidden_dim = out.shape
-        prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
+        return out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
 
-        return prompt_embeds
 
     def prepare_text_ids(
         self,
@@ -400,8 +399,7 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
         out = out.to(dtype=dtype, device=device)
 
         batch_size, num_channels, seq_len, hidden_dim = out.shape
-        prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
-        return prompt_embeds
+        return out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
 
     def prepare_text_ids(
         self,
@@ -531,8 +529,7 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
             (round(height * scale), round(width * scale)),
             interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
         )
-        image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
-        return image
+        return torchvision.transforms.functional.center_crop(image, (target_height, target_width))
 
     def edit_image_auto_resize(self, edit_image):
         calculated_width, calculated_height = self.calculate_dimensions(
@@ -554,9 +551,8 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
             image_latent_ids.append(x_ids)
 
         image_latent_ids = torch.cat(image_latent_ids, dim=0)
-        image_latent_ids = image_latent_ids.unsqueeze(0)
+        return image_latent_ids.unsqueeze(0)
 
-        return image_latent_ids
 
     def process(self, pipe: Flux2ImagePipeline, edit_image, edit_image_auto_resize):
         if edit_image is None:
@@ -596,9 +592,8 @@ class Flux2Unit_ImageIDs(PipelineUnit):
         latent_ids = torch.cartesian_prod(t, h, w, layer)
 
         # Expand to batch: (B, H*W, 4)
-        latent_ids = latent_ids.unsqueeze(0).expand(1, -1, -1)
+        return latent_ids.unsqueeze(0).expand(1, -1, -1)
 
-        return latent_ids
 
     def process(self, pipe: Flux2ImagePipeline, height, width):
         image_ids = self.prepare_latent_ids(height // 16, width // 16).to(pipe.device)
@@ -635,5 +630,4 @@ def model_fn_flux2(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    model_output = model_output[:, :image_seq_len]
-    return model_output
+    return model_output[:, :image_seq_len]

@@ -120,8 +120,7 @@ class FluxLoRALoader(GeneralLoRALoader):
                         name_ = name.replace(".alpha", suffix)
                         if name_ in state_dict:
                             lora_alpha = param.item() / state_dict[name_].shape[0]
-                            lora_alpha = math.sqrt(lora_alpha)
-                            return lora_alpha
+                            return math.sqrt(lora_alpha)
 
             return 1
 
