@@ -1,7 +1,6 @@
 """Version information for diffsynth."""
 
 
-
 def _get_version():
     """Get version from installed package metadata or pyproject.toml."""
     try:

@@ -375,7 +375,7 @@ class ZImageUnit_EditImageAutoResize(PipelineUnit):
             output_params=("edit_image",),
         )
 
-    def process(self, pipe: ZImagePipeline, edit_image, edit_image_auto_resize):
+    def process(self, _pipe: ZImagePipeline, edit_image, edit_image_auto_resize):
         if edit_image is None:
             return {}
         if edit_image_auto_resize is None or not edit_image_auto_resize:
@@ -598,7 +598,7 @@ def model_fn_z_image_turbo(
     timestep=None,
     prompt_embeds=None,
     image_embeds=None,
-    image_latents=None,
+    _image_latents=None,
     control_context=None,
     control_scale=None,
     use_gradient_checkpointing=False,

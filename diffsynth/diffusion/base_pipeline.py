@@ -151,29 +151,31 @@ class BasePipeline(torch.nn.Module):
             for image in vae_output
         ]
 
-    def load_models_to_device(self, model_names):  # noqa: C901
+    def load_models_to_device(self, model_names):
         if self.vram_management_enabled:
             # offload models
             for name, model in self.named_children():
-                if name not in model_names:
-                    if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
-                        if hasattr(model, "offload"):
-                            model.offload()
-                        else:
-                            for module in model.modules():
-                                if hasattr(module, "offload"):
-                                    module.offload()
+                if (
+                    name not in model_names
+                    and hasattr(model, "vram_management_enabled")
+                    and model.vram_management_enabled
+                ):
+                    if hasattr(model, "offload"):
+                        model.offload()
+                    else:
+                        for module in model.modules():
+                            if hasattr(module, "offload"):
+                                module.offload()
             getattr(torch, self.device_type).empty_cache()
             # onload models
             for name, model in self.named_children():
-                if name in model_names:
-                    if hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
-                        if hasattr(model, "onload"):
-                            model.onload()
-                        else:
-                            for module in model.modules():
-                                if hasattr(module, "onload"):
-                                    module.onload()
+                if name in model_names and hasattr(model, "vram_management_enabled") and model.vram_management_enabled:
+                    if hasattr(model, "onload"):
+                        model.onload()
+                    else:
+                        for module in model.modules():
+                            if hasattr(module, "onload"):
+                                module.onload()
 
     def generate_noise(
         self,

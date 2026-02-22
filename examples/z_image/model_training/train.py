@@ -87,19 +87,19 @@ class ZImageTrainingModule(DiffusionTrainingModule):
         self.fp8_models = fp8_models
         self.task = task
         self.task_to_loss = {
-            "sft:data_process": lambda pipe, *args: args,
-            "direct_distill:data_process": lambda pipe, *args: args,
-            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(
-                pipe, **inputs_shared, **inputs_posi
+            "sft:data_process": lambda _pipe, *args: args,
+            "direct_distill:data_process": lambda _pipe, *args: args,
+            "sft": lambda _pipe, inputs_shared, inputs_posi, _inputs_nega: FlowMatchSFTLoss(
+                _pipe, **inputs_shared, **inputs_posi
             ),
-            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(
-                pipe, **inputs_shared, **inputs_posi
+            "sft:train": lambda _pipe, inputs_shared, inputs_posi, _inputs_nega: FlowMatchSFTLoss(
+                _pipe, **inputs_shared, **inputs_posi
             ),
-            "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(
-                pipe, **inputs_shared, **inputs_posi
+            "direct_distill": lambda _pipe, inputs_shared, inputs_posi, _inputs_nega: DirectDistillLoss(
+                _pipe, **inputs_shared, **inputs_posi
             ),
-            "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(
-                pipe, **inputs_shared, **inputs_posi
+            "direct_distill:train": lambda _pipe, inputs_shared, inputs_posi, _inputs_nega: DirectDistillLoss(
+                _pipe, **inputs_shared, **inputs_posi
             ),
         }
         if task == "trajectory_imitation":
@@ -139,7 +139,7 @@ class ZImageTrainingModule(DiffusionTrainingModule):
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
         loss = self.task_to_loss[self.task](self.pipe, *inputs)
-        return loss  # noqa: RET504 – readability
+        return loss
 
 
 def z_image_parser():

@@ -58,7 +58,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             )
         # Loss
         loss = FlowMatchSFTLoss(self.pipe, **inputs_shared, **inputs_posi)
-        return loss  # noqa: RET504 – readability
+        return loss
 
 
 if __name__ == "__main__":

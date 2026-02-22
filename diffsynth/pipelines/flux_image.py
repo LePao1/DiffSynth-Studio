@@ -1479,4 +1479,3 @@ def model_fn_flux_image(  # noqa: C901
         hidden_states = hidden_states[:, : -kontext_latents.shape[1]]
 
     return dit.unpatchify(hidden_states, height, width)
-

@@ -266,7 +266,6 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         batch_size, num_channels, seq_len, hidden_dim = out.shape
         return out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
 
-
     def prepare_text_ids(
         self,
         x: torch.Tensor,  # (B, L, D) or (L, D)
@@ -553,7 +552,6 @@ class Flux2Unit_EditImageEmbedder(PipelineUnit):
         image_latent_ids = torch.cat(image_latent_ids, dim=0)
         return image_latent_ids.unsqueeze(0)
 
-
     def process(self, pipe: Flux2ImagePipeline, edit_image, edit_image_auto_resize):
         if edit_image is None:
             return {}
@@ -593,7 +591,6 @@ class Flux2Unit_ImageIDs(PipelineUnit):
 
         # Expand to batch: (B, H*W, 4)
         return latent_ids.unsqueeze(0).expand(1, -1, -1)
-
 
     def process(self, pipe: Flux2ImagePipeline, height, width):
         image_ids = self.prepare_latent_ids(height // 16, width // 16).to(pipe.device)

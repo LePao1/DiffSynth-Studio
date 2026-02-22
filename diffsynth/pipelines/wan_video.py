@@ -515,7 +515,7 @@ class WanVideoUnit_PromptEmbedder(PipelineUnit):
             prompt_emb[:, v:] = 0
         return prompt_emb
 
-    def process(self, pipe: WanVideoPipeline, prompt, positive) -> dict:
+    def process(self, pipe: WanVideoPipeline, prompt, _positive) -> dict:
         pipe.load_models_to_device(self.onload_model_names)
         prompt_emb = self.encode_prompt(pipe, prompt)
         return {"context": prompt_emb}
@@ -1071,7 +1071,7 @@ class WanVideoUnit_TeaCache(PipelineUnit):
             output_params=("tea_cache",),
         )
 
-    def process(self, pipe: WanVideoPipeline, num_inference_steps, tea_cache_l1_thresh, tea_cache_model_id):
+    def process(self, _pipe: WanVideoPipeline, num_inference_steps, tea_cache_l1_thresh, tea_cache_model_id):
         if tea_cache_l1_thresh is None:
             return {}
         return {
@@ -1084,7 +1084,7 @@ class WanVideoUnit_CfgMerger(PipelineUnit):
         super().__init__(take_over=True)
         self.concat_tensor_names = ["context", "clip_feature", "y", "reference_latents"]
 
-    def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
+    def process(self, _pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
         if not inputs_shared["cfg_merge"]:
             return inputs_shared, inputs_posi, inputs_nega
         for name in self.concat_tensor_names:
@@ -1351,7 +1351,7 @@ class WanVideoUnit_AnimateVideoSplit(PipelineUnit):
 
     def process(
         self,
-        pipe: WanVideoPipeline,
+        _pipe: WanVideoPipeline,
         input_video,
         animate_pose_video,
         animate_face_video,
@@ -1531,7 +1531,7 @@ class TeaCache:
             )
         self.coefficients = self.coefficients_dict[model_id]
 
-    def check(self, dit: WanModel, x, t_mod):
+    def check(self, _dit: WanModel, x, t_mod):
         modulated_inp = t_mod.clone()
         if self.step == 0 or self.step == self.num_inference_steps - 1:
             should_calc = True
@@ -1668,7 +1668,7 @@ def model_fn_wan_video(  # noqa: C901
     use_gradient_checkpointing_offload: bool = False,
     control_camera_latents_input=None,
     fuse_vae_embedding_in_latents: bool = False,
-    **kwargs,
+    **_kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
         model_kwargs = {

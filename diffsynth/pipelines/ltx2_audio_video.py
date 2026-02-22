@@ -311,7 +311,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         input_indexes,
         input_strength,
         initial_latents=None,
-        num_frames=121,
+        _num_frames=121,
     ):
         b, _, f, h, w = latents.shape
         denoise_mask = torch.ones((b, 1, f, h, w), dtype=latents.dtype, device=latents.device)
@@ -340,11 +340,12 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
             print(
                 "Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0.",
             )
-        if inputs_shared.get("use_two_stage_pipeline", False):
+        if inputs_shared.get("use_two_stage_pipeline", False) and not inputs_shared.get(
+            "use_distilled_pipeline", False
+        ):
             # distill pipeline also uses two-stage, but it does not needs lora
-            if not inputs_shared.get("use_distilled_pipeline", False):
-                if not (hasattr(pipe, "stage2_lora_path") and pipe.stage2_lora_path is not None):
-                    raise ValueError("Two-stage pipeline requested, but stage2_lora_path is not set in the pipeline.")
+            if not (hasattr(pipe, "stage2_lora_path") and pipe.stage2_lora_path is not None):
+                raise ValueError("Two-stage pipeline requested, but stage2_lora_path is not set in the pipeline.")
             if not (hasattr(pipe, "upsampler") and pipe.upsampler is not None):
                 raise ValueError("Two-stage pipeline requested, but upsampler model is not loaded in the pipeline.")
         return inputs_shared, inputs_posi, inputs_nega
@@ -460,7 +461,6 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         # Apply mask to preserve original padding (set padded positions to 0)
         mask_flattened = rearrange(mask, "b t 1 1 -> b t 1").expand(-1, -1, d * num_layers)
         return normed.masked_fill(~mask_flattened, 0.0)
-
 
     def _run_feature_extractor(
         self,
@@ -595,13 +595,13 @@ class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):
 
     def process(
         self,
-        pipe: LTX2AudioVideoPipeline,
+        _pipe: LTX2AudioVideoPipeline,
         input_video,
         video_noise,
         audio_noise,
-        tiled,
-        tile_size,
-        tile_stride,
+        _tiled,
+        _tile_size,
+        _tile_stride,
     ):
         if input_video is None:
             return {"video_latents": video_noise, "audio_latents": audio_noise}
@@ -706,9 +706,9 @@ def model_fn_ltx2(
     audio_patchifier=None,
     timestep=None,
     denoise_mask_video=None,
-    use_gradient_checkpointing=False,
-    use_gradient_checkpointing_offload=False,
-    **kwargs,
+    _use_gradient_checkpointing=False,
+    _use_gradient_checkpointing_offload=False,
+    **_kwargs,
 ):
     timestep = timestep.float() / 1000.0
 
