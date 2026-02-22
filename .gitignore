@@ -36,3 +36,10 @@ diffusers/
 *.msc
 *.mv
 log*.txt
+
+
+# Core dump files
+max_align_t
+vgcore*
+core.*
+core
